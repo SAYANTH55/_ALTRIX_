@@ -1,10 +1,12 @@
 import requests
 import urllib3
 
+import os
+
 # Suppress warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-API_KEY = ""
+API_KEY = os.environ.get("GROQ_API_KEY", "")
 
 def diagnose():
     print(f"Diagnosing Connection...")

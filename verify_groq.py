@@ -4,7 +4,12 @@ import urllib3
 # Suppress warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-API_KEY = "Your api key"
+import os
+
+# Suppress warnings
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+API_KEY = os.environ.get("GROQ_API_KEY", "")
 
 def test_groq_insecure():
     print(f"Testing Groq API (INSECURE MODE)...")

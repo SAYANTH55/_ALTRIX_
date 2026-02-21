@@ -36,3 +36,12 @@ This project combines frontend + backend AI processing to create a clean and int
 ---
 
 ## 📁 Project Structure
+```
+antigravity/
+│
+├── src/                 # Frontend source code
+├── public/              # Static assets
+├── ai-humanizer/        # Python backend & AI logic
+├── .env.local           # Environment variables (not pushed)
+└── README.md
+```

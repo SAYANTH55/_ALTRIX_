@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
-import { Sparkles, BookOpen, Cpu, ArrowRight, ChevronDown } from "lucide-react";
+import { Sparkles, BookOpen, Cpu, ArrowRight, ChevronDown, PenTool, Share2, Search } from "lucide-react";
 
 // ─── Data ──────────────────────────────────────────────────────────────────────
 
@@ -33,7 +33,7 @@ const tools = [
     hoverBorder: "group-hover:border-blue-500/50",
     accent: "text-blue-300",
     bg: "bg-blue-500/5",
-    delay: 0.12,
+    delay: 0.1,
     Icon: BookOpen,
   },
   {
@@ -47,8 +47,50 @@ const tools = [
     hoverBorder: "group-hover:border-emerald-500/50",
     accent: "text-emerald-300",
     bg: "bg-emerald-500/5",
-    delay: 0.24,
+    delay: 0.2,
     Icon: Cpu,
+  },
+  {
+    name: "LEXORA",
+    path: "/lexora",
+    label: "Academic Formatter",
+    micro: "Automate document formatting and LaTeX standardization.",
+    gradient: "from-amber-600 to-orange-600",
+    glow: "amber",
+    border: "border-amber-500/20",
+    hoverBorder: "group-hover:border-amber-500/50",
+    accent: "text-amber-300",
+    bg: "bg-amber-500/5",
+    delay: 0.3,
+    Icon: PenTool,
+  },
+  {
+    name: "SAYON",
+    path: "/sayon",
+    label: "Visual Explorer",
+    micro: "Map research papers into visual knowledge nets.",
+    gradient: "from-rose-600 to-red-600",
+    glow: "rose",
+    border: "border-rose-500/20",
+    hoverBorder: "group-hover:border-rose-500/50",
+    accent: "text-rose-300",
+    bg: "bg-rose-500/5",
+    delay: 0.4,
+    Icon: Share2,
+  },
+  {
+    name: "KARION",
+    path: "/karion",
+    label: "Citation Intelligence",
+    micro: "Verified metadata extraction and academic citation formatting.",
+    gradient: "from-indigo-600 to-violet-600",
+    glow: "indigo",
+    border: "border-indigo-500/20",
+    hoverBorder: "group-hover:border-indigo-500/50",
+    accent: "text-indigo-300",
+    bg: "bg-indigo-500/5",
+    delay: 0.5,
+    Icon: Search,
   },
 ];
 
@@ -269,7 +311,7 @@ export default function LandingPage() {
             </p>
           </FadeUp>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 w-full max-w-6xl">
             {tools.map((tool) => (
               <FadeUp key={tool.name} delay={tool.delay}>
                 <Link href={tool.path} className="group block relative">

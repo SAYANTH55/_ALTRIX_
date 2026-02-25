@@ -1,4 +1,4 @@
-import sys
+﻿import sys
 import os
 import re
 
@@ -9,9 +9,12 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from document_reader import process_document
+from services.ai_gateway import gateway
+from services.karion_service import KarionService
 import uvicorn
 
-app = FastAPI(title="SENTIC — Linguistic Entropy Backend")
+app = FastAPI(title="ALTRIX â€” Research Intelligence Backend")
+karion = KarionService(gateway)
 
 # Import marker injector (replaces old BERT humanizer)
 try:
@@ -32,10 +35,46 @@ app.add_middleware(
 
 @app.get("/")
 def health_check():
-    return {"status": "ok", "service": "SENTIC Linguistic Entropy Backend"}
+    return {"status": "ok", "service": "ALTRIX Research Intelligence Backend"}
 
 
-# ── Stage 3: Pragmatic Marker Injection ─────────────────────────────────────
+# â”€â”€ KARION: Citation Intelligence â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+class KarionRequest(BaseModel):
+    text: str
+    style: str = "ieee"
+    mode: str = "standard"  # quick, standard, strict
+
+
+@app.post("/karion/verify")
+async def karion_verify(req: KarionRequest):
+    """
+    4-Stage Citation Pipeline:
+    1. AI Metadata Extraction
+    2. Scholarly Verification (Crossref/Semantic Scholar)
+    3. Official CSL Formatting
+    4. BibTeX/Metadata Generation
+    """
+    try:
+        # Step 1: Extract
+        extracted = await karion.extract_metadata(req.text)
+        if not extracted:
+            return {"formatted": [], "bibtex": "", "metadata": [], "warning": "No citations found or failed to parse."}
+
+        # Step 2: Verify
+        verified_tasks = [karion.verify_metadata(item, mode=req.mode) for item in extracted]
+        verified_items = await asyncio.gather(*verified_tasks)
+
+        # Step 3 & 4: Format & Package
+        result = karion.format_citation(verified_items, style_name=req.style)
+        return result
+    except Exception as e:
+        import traceback
+        with open("backend_errors.log", "a") as f:
+            f.write(f"\n--- KARION Error ---\n{traceback.format_exc()}\n")
+        raise HTTPException(status_code=500, detail=f"KARION Pipeline Error: {str(e)}")
+
+
+# â”€â”€ Stage 3: Pragmatic Marker Injection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class MarkerRequest(BaseModel):
     text: str
     injection_rate: float = 0.28
@@ -45,7 +84,7 @@ class MarkerRequest(BaseModel):
 def inject_markers_endpoint(req: MarkerRequest):
     """
     Stage 3 of the Linguistic Entropy Pipeline.
-    Injects human pragmatic markers (Frankly, In practice, Oddly enough…)
+    Injects human pragmatic markers (Frankly, In practice, Oddly enoughâ€¦)
     into sentences that lack discourse signals.
     """
     try:
@@ -55,19 +94,19 @@ def inject_markers_endpoint(req: MarkerRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ── Legacy endpoint alias (keeps any old clients working) ───────────────────
+# â”€â”€ Legacy endpoint alias (keeps any old clients working) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class LegacyHumanizeRequest(BaseModel):
     text: str
 
 
 @app.post("/humanize")
 def legacy_humanize(req: LegacyHumanizeRequest):
-    """Legacy alias → routes to inject-markers."""
+    """Legacy alias â†’ routes to inject-markers."""
     result = inject_pragmatic_markers(req.text)
     return {"humanized_text": result, "text": result}
 
 
-# ── Document text extraction ─────────────────────────────────────────────────
+# â”€â”€ Document text extraction â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @app.post("/extract-text")
 async def extract_text(file: UploadFile = File(...)):
     if not file.filename:

@@ -3,13 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
-import { Home, Zap, Layers, Cpu, Clock } from "lucide-react";
+import { Home, Zap, Layers, Cpu, Clock, PenTool, Share2, Search } from "lucide-react";
 import { useHistoryPanel } from "@/lib/history-store";
 
 const navItems = [
     { name: "Sentic", path: "/sentic", icon: Zap, color: "text-purple-400" },
     { name: "Alamix", path: "/alamix", icon: Layers, color: "text-blue-400" },
     { name: "Deoza", path: "/deoza", icon: Cpu, color: "text-emerald-400" },
+    { name: "Lexora", path: "/lexora", icon: PenTool, color: "text-amber-400" },
+    { name: "Sayon", path: "/sayon", icon: Share2, color: "text-rose-400" },
+    { name: "Karion", path: "/karion", icon: Search, color: "text-indigo-400" },
 ];
 
 export default function NavigationRail() {

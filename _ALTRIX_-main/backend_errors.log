@@ -1,0 +1,38 @@
+
+--- Error ---
+Traceback (most recent call last):
+  File "C:\Users\sayan\miniconda3\Lib\site-packages\pdfplumber\pdf.py", line 50, in __init__
+    self.doc = PDFDocument(PDFParser(stream), password=password or "")
+               ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\sayan\miniconda3\Lib\site-packages\pdfminer\pdfdocument.py", line 741, in __init__
+    raise PDFSyntaxError("No /Root object! - Is this really a PDF?")
+pdfminer.pdfparser.PDFSyntaxError: No /Root object! - Is this really a PDF?
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\sayan\OneDrive\Desktop\text aura\antigravity\ai-humanizer\document_reader.py", line 31, in read_pdf
+    with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
+         ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\sayan\miniconda3\Lib\site-packages\pdfplumber\pdf.py", line 107, in open
+    return cls(
+        stream,
+    ...<7 lines>...
+        raise_unicode_errors=raise_unicode_errors,
+    )
+  File "C:\Users\sayan\miniconda3\Lib\site-packages\pdfplumber\pdf.py", line 52, in __init__
+    raise PdfminerException(e)
+pdfplumber.utils.exceptions.PdfminerException: No /Root object! - Is this really a PDF?
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\sayan\OneDrive\Desktop\text aura\antigravity\ai-humanizer\fastapi_app.py", line 70, in extract_text
+    text, method = process_document(file.filename, content)
+                   ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\sayan\OneDrive\Desktop\text aura\antigravity\ai-humanizer\document_reader.py", line 72, in process_document
+    return read_pdf(file_bytes)
+  File "C:\Users\sayan\OneDrive\Desktop\text aura\antigravity\ai-humanizer\document_reader.py", line 60, in read_pdf
+    raise ValueError(f"Error reading PDF: {str(e)}")
+ValueError: Error reading PDF: No /Root object! - Is this really a PDF?
+

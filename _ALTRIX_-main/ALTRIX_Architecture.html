@@ -1,0 +1,1642 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>ALTRIX — Platform Architecture & Technical Documentation</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+
+        :root {
+            --p: #7c3aed;
+            --p2: #4f46e5;
+            --bg: #fff;
+            --text: #111827;
+            --muted: #6b7280;
+            --bdr: #e5e7eb;
+            --cbg: #f3f4f6;
+            --pbg: #f5f3ff;
+            --pbdr: #ddd6fe;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 10.5pt;
+            line-height: 1.7;
+        }
+
+        .page {
+            width: 210mm;
+            margin: 0 auto;
+            padding: 14mm 16mm;
+        }
+
+        .cover {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            border-bottom: 2px solid var(--bdr);
+            padding: 40px 0 60px;
+            page-break-after: always;
+        }
+
+        .cover-badge {
+            font-size: 8pt;
+            font-weight: 700;
+            letter-spacing: .35em;
+            text-transform: uppercase;
+            color: var(--p);
+            background: var(--pbg);
+            border: 1px solid var(--pbdr);
+            padding: 5px 16px;
+            border-radius: 999px;
+            margin-bottom: 28px;
+            display: inline-block;
+        }
+
+        .cover h1 {
+            font-size: 56pt;
+            font-weight: 800;
+            letter-spacing: .22em;
+            background: linear-gradient(135deg, #7c3aed, #4f46e5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+            line-height: 1;
+        }
+
+        .cover-sub {
+            font-size: 12pt;
+            font-weight: 500;
+            letter-spacing: .2em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 36px;
+        }
+
+        .cover-tagline {
+            font-size: 10.5pt;
+            color: var(--muted);
+            font-weight: 300;
+            letter-spacing: .06em;
+            margin-bottom: 52px;
+        }
+
+        .cover-meta {
+            display: flex;
+            gap: 18px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .cover-meta span {
+            font-size: 8.5pt;
+            color: var(--muted);
+            font-weight: 500;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            padding: 6px 16px;
+            border: 1px solid var(--bdr);
+            border-radius: 8px;
+        }
+
+        .toc {
+            page-break-after: always;
+            padding-top: 20px;
+        }
+
+        .toc h2 {
+            font-size: 15pt;
+            font-weight: 700;
+            color: var(--p);
+            margin-bottom: 22px;
+        }
+
+        .toc-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 0;
+            border-bottom: 1px dotted var(--bdr);
+            font-size: 10pt;
+        }
+
+        .toc-num {
+            font-weight: 700;
+            color: var(--p);
+            min-width: 28px;
+            font-size: 9pt;
+        }
+
+        .toc-label {
+            flex: 1;
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        .section {
+            margin-bottom: 36px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 18px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--bdr);
+        }
+
+        .section-num {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--p), var(--p2));
+            color: #fff;
+            font-weight: 800;
+            font-size: 12pt;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .section-title {
+            font-size: 14pt;
+            font-weight: 700;
+        }
+
+        .section-subtitle {
+            font-size: 8.5pt;
+            color: var(--p);
+            font-weight: 600;
+            letter-spacing: .15em;
+            text-transform: uppercase;
+        }
+
+        h3 {
+            font-size: 11pt;
+            font-weight: 700;
+            margin: 20px 0 10px;
+            padding-left: 12px;
+            border-left: 3px solid #c4b5fd;
+        }
+
+        h4 {
+            font-size: 8.5pt;
+            font-weight: 600;
+            color: var(--p);
+            margin: 14px 0 7px;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+        }
+
+        p {
+            margin-bottom: 10px;
+            color: #374151;
+        }
+
+        .arch-diagram {
+            background: var(--pbg);
+            border: 1.5px solid var(--pbdr);
+            border-radius: 14px;
+            padding: 24px 28px;
+            margin: 16px 0 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8pt;
+            line-height: 1.9;
+            color: #374151;
+            white-space: pre;
+        }
+
+        pre {
+            background: var(--cbg);
+            border: 1px solid var(--bdr);
+            border-radius: 10px;
+            padding: 14px 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 7.8pt;
+            line-height: 1.65;
+            overflow: hidden;
+            margin: 12px 0 16px;
+            color: #1f2937;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8.5pt;
+            background: var(--cbg);
+            padding: 1px 5px;
+            border-radius: 4px;
+            color: var(--p);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0 18px;
+            font-size: 9.5pt;
+        }
+
+        th {
+            background: linear-gradient(135deg, var(--p), var(--p2));
+            color: #fff;
+            padding: 9px 14px;
+            text-align: left;
+            font-weight: 700;
+            font-size: 8.5pt;
+            letter-spacing: .05em;
+        }
+
+        th:first-child {
+            border-radius: 8px 0 0 0;
+        }
+
+        th:last-child {
+            border-radius: 0 8px 0 0;
+        }
+
+        td {
+            padding: 8px 14px;
+            border-bottom: 1px solid var(--bdr);
+            color: #374151;
+            vertical-align: top;
+        }
+
+        tr:nth-child(even) td {
+            background: #f9fafb;
+        }
+
+        td:first-child {
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .callout {
+            border-radius: 12px;
+            padding: 14px 18px;
+            margin: 14px 0;
+            display: flex;
+            gap: 13px;
+            align-items: flex-start;
+        }
+
+        .callout-body {
+            flex: 1;
+        }
+
+        .callout-title {
+            font-weight: 700;
+            font-size: 9.5pt;
+            margin-bottom: 4px;
+        }
+
+        .callout-text {
+            font-size: 9pt;
+            line-height: 1.6;
+            color: #374151;
+            margin: 0;
+        }
+
+        .callout.info {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+        }
+
+        .callout.info .callout-title {
+            color: #2563eb;
+        }
+
+        .callout.success {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+        }
+
+        .callout.success .callout-title {
+            color: #16a34a;
+        }
+
+        .callout.purple {
+            background: var(--pbg);
+            border: 1px solid var(--pbdr);
+        }
+
+        .callout.purple .callout-title {
+            color: var(--p);
+        }
+
+        .callout.warning {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+        }
+
+        .callout.warning .callout-title {
+            color: #d97706;
+        }
+
+        .tool-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 14px;
+            margin: 18px 0;
+        }
+
+        .tool-card {
+            border-radius: 14px;
+            padding: 18px 16px;
+            border: 1.5px solid;
+        }
+
+        .tool-card.sentic {
+            background: #faf5ff;
+            border-color: #ddd6fe;
+        }
+
+        .tool-card.alamix {
+            background: #eff6ff;
+            border-color: #bfdbfe;
+        }
+
+        .tool-card.deoza {
+            background: #ecfdf5;
+            border-color: #a7f3d0;
+        }
+
+        .tool-card .tname {
+            font-weight: 800;
+            font-size: 11pt;
+            letter-spacing: .15em;
+            margin-bottom: 4px;
+        }
+
+        .tool-card.sentic .tname {
+            color: #7c3aed;
+        }
+
+        .tool-card.alamix .tname {
+            color: #1d4ed8;
+        }
+
+        .tool-card.deoza .tname {
+            color: #059669;
+        }
+
+        .tool-card .trole {
+            font-size: 7.5pt;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .15em;
+            color: var(--muted);
+            margin-bottom: 10px;
+        }
+
+        .tool-card .tdesc {
+            font-size: 8.5pt;
+            color: #374151;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+
+        .tool-card .tpills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .tpill {
+            font-size: 7pt;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 999px;
+            letter-spacing: .05em;
+        }
+
+        .tpill.purple {
+            background: #ede9fe;
+            color: #6d28d9;
+        }
+
+        .tpill.blue {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .tpill.green {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .route-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 14px 0;
+        }
+
+        .route-card {
+            background: var(--cbg);
+            border: 1px solid var(--bdr);
+            border-radius: 10px;
+            padding: 12px 14px;
+        }
+
+        .route-card .rpath {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 7.5pt;
+            color: var(--p);
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .route-card .rdesc {
+            font-size: 8.5pt;
+            color: #374151;
+            line-height: 1.5;
+        }
+
+        .file-map {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 14px 0;
+        }
+
+        .file-card {
+            background: var(--pbg);
+            border: 1px solid var(--pbdr);
+            border-radius: 10px;
+            padding: 12px 14px;
+        }
+
+        .file-card .fname {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 7.5pt;
+            color: var(--p);
+            font-weight: 700;
+            margin-bottom: 5px;
+            word-break: break-all;
+        }
+
+        .file-card .frole {
+            font-size: 8.5pt;
+            color: #374151;
+            line-height: 1.5;
+        }
+
+        .flow-list {
+            counter-reset: flow;
+            list-style: none;
+            margin: 14px 0;
+            padding: 0;
+        }
+
+        .flow-list li {
+            counter-increment: flow;
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+            padding: 8px 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .flow-list li::before {
+            content: counter(flow);
+            min-width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--p), var(--p2));
+            color: #fff;
+            font-weight: 800;
+            font-size: 8pt;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .flow-list li span {
+            font-size: 9.5pt;
+            color: #374151;
+            line-height: 1.6;
+        }
+
+        .pb {
+            page-break-before: always;
+            padding-top: 20px;
+        }
+
+        .footer {
+            margin-top: 40px;
+            padding-top: 14px;
+            border-top: 1px solid var(--bdr);
+            display: flex;
+            justify-content: space-between;
+            font-size: 7.5pt;
+            color: var(--muted);
+        }
+
+        ul.std {
+            padding-left: 18px;
+            margin: 8px 0 14px;
+            color: #374151;
+            font-size: 9.5pt;
+            line-height: 1.9;
+        }
+
+        @media print {
+            body {
+                font-size: 10pt;
+            }
+
+            .page {
+                padding: 10mm 14mm;
+            }
+
+            .cover {
+                min-height: auto;
+                padding: 30px 0 40px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page">
+
+        <!-- ══ COVER ══ -->
+        <div class="cover">
+            <div class="cover-badge">Platform Architecture Document</div>
+            <h1>ALTRIX</h1>
+            <div class="cover-sub">Research Intelligence Platform</div>
+            <div class="cover-tagline">A unified AI ecosystem — Humanize · Analyze · Discover</div>
+            <div class="cover-meta">
+                <span>Next.js 14 App Router</span>
+                <span>3 AI Tools</span>
+                <span>Groq LLaMA 3.3 70B</span>
+                <span>Zustand + localStorage</span>
+                <span>February 2026</span>
+            </div>
+        </div>
+
+        <!-- ══ TOC ══ -->
+        <div class="toc">
+            <h2>Table of Contents</h2>
+            <div class="toc-item"><span class="toc-num">01</span><span class="toc-label">Platform Overview — What is
+                    ALTRIX?</span></div>
+            <div class="toc-item"><span class="toc-num">02</span><span class="toc-label">High-Level System
+                    Architecture</span></div>
+            <div class="toc-item"><span class="toc-num">03</span><span class="toc-label">Application Routing & Page
+                    Structure</span></div>
+            <div class="toc-item"><span class="toc-num">04</span><span class="toc-label">Shared Layout System —
+                    NavigationRail & Dashboard Shell</span></div>
+            <div class="toc-item"><span class="toc-num">05</span><span class="toc-label">The Three AI Tools — High-Level
+                    Summary</span></div>
+            <div class="toc-item"><span class="toc-num">06</span><span class="toc-label">Shared Infrastructure —
+                    History, State, and Storage</span></div>
+            <div class="toc-item"><span class="toc-num">07</span><span class="toc-label">API Layer — All Endpoints at a
+                    Glance</span></div>
+            <div class="toc-item"><span class="toc-num">08</span><span class="toc-label">Design System & Frontend
+                    Stack</span></div>
+            <div class="toc-item"><span class="toc-num">09</span><span class="toc-label">Landing Page
+                    Architecture</span></div>
+            <div class="toc-item"><span class="toc-num">10</span><span class="toc-label">Complete File Map</span></div>
+        </div>
+
+        <!-- ══ SECTION 1 ══ -->
+        <div class="section pb">
+            <div class="section-header">
+                <div class="section-num">1</div>
+                <div>
+                    <div class="section-title">Platform Overview — What is ALTRIX?</div>
+                    <div class="section-subtitle">Mission, purpose, and the 3-tool ecosystem</div>
+                </div>
+            </div>
+
+            <p>ALTRIX is a <strong>next-generation AI research platform</strong> that packages three specialised AI
+                engines into one cohesive intelligence suite. It is built for researchers, academics, and writers who
+                need to humanize AI text, analyze research papers, and search across live academic databases — all
+                without leaving a single platform.</p>
+
+            <p>The tagline <em>"Intelligence, Amplified"</em> reflects the dual mission: ALTRIX is not just an AI tool,
+                it is an amplifier of human cognitive work. Each of the three tools tackles a distinct stage of the
+                research and writing workflow.</p>
+
+            <div class="callout purple">
+                <div class="callout-body">
+                    <div class="callout-title">Platform Tagline from code</div>
+                    <p class="callout-text">Title: <code>"ALTRIX | Intelligence, Amplified"</code><br />Description:
+                        <code>"The AI-powered suite for writing, research, and discovery. Humanize text, analyze papers, and explore knowledge — all in one platform."</code>
+                    </p>
+                </div>
+            </div>
+
+            <div class="tool-grid">
+                <div class="tool-card sentic">
+                    <div class="tname">SENTIC</div>
+                    <div class="trole">Text Humanizer</div>
+                    <div class="tdesc">Refine and humanize AI-generated content with authenticity. 2-stage Groq + Python
+                        pipeline attacking AI detection from multiple linguistic angles.</div>
+                    <div class="tpills">
+                        <span class="tpill purple">Groq LLaMA</span>
+                        <span class="tpill purple">Python FastAPI</span>
+                        <span class="tpill purple">BERT Markers</span>
+                        <span class="tpill purple">AI Score</span>
+                    </div>
+                </div>
+                <div class="tool-card alamix">
+                    <div class="tname">ALAMIX</div>
+                    <div class="trole">Research Analyst</div>
+                    <div class="tdesc">Extract meaning and insight from academic papers (PDF/DOCX). Produces a 16-field
+                        structured intelligence report with AI chatbot assistance.</div>
+                    <div class="tpills">
+                        <span class="tpill blue">PDF/DOCX Upload</span>
+                        <span class="tpill blue">Python Extraction</span>
+                        <span class="tpill blue">JSON Schema</span>
+                        <span class="tpill blue">jsPDF Export</span>
+                    </div>
+                </div>
+                <div class="tool-card deoza">
+                    <div class="tname">DEOZA</div>
+                    <div class="trole">Research Intelligence</div>
+                    <div class="tdesc">Search millions of academic papers live (Semantic Scholar + arXiv), get field
+                        briefings, AI paper summaries and multi-turn Q&amp;A.</div>
+                    <div class="tpills">
+                        <span class="tpill green">Dual-Source Search</span>
+                        <span class="tpill green">Smart Ranking</span>
+                        <span class="tpill green">4 AI Endpoints</span>
+                        <span class="tpill green">Personal Library</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ SECTION 2 ══ -->
+        <div class="section pb">
+            <div class="section-header">
+                <div class="section-num">2</div>
+                <div>
+                    <div class="section-title">High-Level System Architecture</div>
+                    <div class="section-subtitle">Platform layers, data flows, and service boundaries</div>
+                </div>
+            </div>
+
+            <div class="arch-diagram">
+                ┌──────────────────────────────────────────────────────────────────────────┐
+                │ ALTRIX PLATFORM │
+                │ │
+                │ ┌─────────────────────────────────────────────────────────────────┐ │
+                │ │ NEXT.JS 14 (App Router) │ │
+                │ │ │ │
+                │ │ ┌────────────┐ ┌────────────┐ ┌──────────────────────────┐ │ │
+                │ │ │ Landing │ │ Dashboard │ │ API Routes (Edge) │ │ │
+                │ │ │ /page.tsx │ │ Layout │ │ /api/humanize │ │ │
+                │ │ │ │ │ + NavRail │ │ /api/alamix/extract │ │ │
+                │ │ └────────────┘ │ │ │ /api/deoza/search │ │ │
+                │ │ │ ┌────────┐ │ │ /api/deoza/insight │ │ │
+                │ │ │ │SENTIC │ │ │ /api/deoza/summarize │ │ │
+                │ │ │ ├────────┤ │ │ /api/deoza/chat │ │ │
+                │ │ │ │ALAMIX │ │ └──────────────────────────┘ │ │
+                │ │ │ ├────────┤ │ │ │
+                │ │ │ │DEOZA │ │ │ │
+                │ │ │ └────────┘ │ │ │
+                │ │ └────────────┘ │ │
+                │ └─────────────────────────────────────────────────────────────────┘ │
+                │ │
+                │ ┌──────────────────────────┐ ┌──────────────────┐ ┌───────────────┐ │
+                │ │ GROQ CLOUD API │ │ PYTHON FASTAPI │ │ ACADEMIC │ │
+                │ │ llama-3.3-70b-versatile │ │ :8000 │ │ DATABASES │ │
+                │ │ │ │ /inject-markers │ │ Semantic Sch │ │
+                │ │ · SENTIC humanizer │ │ /extract-text │ │ arXiv XML │ │
+                │ │ · ALAMIX extractor │ │ │ │ │ │
+                │ │ · DEOZA (4 endpoints) │ │ │ │ │ │
+                │ └──────────────────────────┘ └──────────────────┘ └───────────────┘ │
+                │ │
+                │ ┌───────────────────────────────────────────────────────────────────┐ │
+                │ │ CLIENT STATE (Browser) │ │
+                │ │ Zustand: deoza-store (papers, library) │ │
+                │ │ localStorage: sentic_history · alamix_history · deoza_history │ │
+                │ └───────────────────────────────────────────────────────────────────┘ │
+                └──────────────────────────────────────────────────────────────────────────┘</div>
+
+            <p>ALTRIX runs entirely on <strong>Next.js 14 with the App Router</strong>. There is no separate backend
+                server for the main application — all API routes run as <strong>serverless edge functions</strong>
+                within the Next.js process itself. The only separate backend is the <strong>Python FastAPI
+                    server</strong> (port 8000) used for SENTIC's marker injection and ALAMIX's document text extraction
+                — processes that require native Python libraries (python-docx, PyMuPDF, transformers).</p>
+
+            <div class="callout info">
+                <div class="callout-body">
+                    <div class="callout-title">Two Runtime Boundary</div>
+                    <p class="callout-text">All Groq API calls happen <strong>server-side inside Next.js API
+                            routes</strong> — the API key is never exposed to the browser. The Python FastAPI is called
+                        by the Next.js API routes as a <em>proxied internal request</em>
+                        (<code>http://localhost:8000</code>), not directly by the frontend.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ SECTION 3 ══ -->
+        <div class="section pb">
+            <div class="section-header">
+                <div class="section-num">3</div>
+                <div>
+                    <div class="section-title">Application Routing &amp; Page Structure</div>
+                    <div class="section-subtitle">Next.js App Router — file-based routing with route groups</div>
+                </div>
+            </div>
+
+            <p>ALTRIX uses Next.js 14's App Router with a <strong>route group pattern</strong> —
+                <code>(dashboard)</code> wraps all tool pages so they share the NavigationRail layout without it
+                appearing on the public landing page.</p>
+
+            <pre>src/app/
+├── page.tsx                          ← Landing page (public, no nav rail)
+├── layout.tsx                        ← Root layout: Inter + Orbitron fonts, global CSS
+├── globals.css
+├── template.tsx
+│
+├── (dashboard)/                      ← Route group — shares NavigationRail layout
+│   ├── layout.tsx                    ← Wraps everything in NavigationRail + pl-20
+│   ├── sentic/
+│   │   └── page.tsx                  ← /sentic
+│   ├── alamix/
+│   │   └── page.tsx                  ← /alamix
+│   └── deoza/
+│       ├── page.tsx                  ← /deoza (hero search)
+│       ├── search/page.tsx           ← /deoza/search?q=...
+│       ├── paper/[id]/page.tsx       ← /deoza/paper/:id
+│       └── library/page.tsx          ← /deoza/library
+│
+└── api/                              ← Serverless API routes
+    ├── humanize/route.ts             ← POST /api/humanize (SENTIC)
+    ├── alamix/extract/route.ts       ← POST /api/alamix/extract
+    └── deoza/
+        ├── search/route.ts           ← POST /api/deoza/search
+        ├── insight/route.ts          ← POST /api/deoza/insight
+        ├── summarize/route.ts        ← POST /api/deoza/summarize
+        └── chat/route.ts             ← POST /api/deoza/chat</pre>
+
+            <h3>Route Group Behaviour</h3>
+            <p>The <code>(dashboard)</code> folder name with parentheses is a <strong>Next.js route group</strong> — it
+                groups related pages under a shared layout <em>without</em> adding a URL segment. So
+                <code>/sentic</code>, <code>/alamix</code>, and <code>/deoza</code> all get the NavigationRail
+                automatically, while the root <code>/</code> landing page remains clean and standalone.</p>
+
+            <table>
+                <tr>
+                    <th>URL Path</th>
+                    <th>File</th>
+                    <th>Has NavRail?</th>
+                </tr>
+                <tr>
+                    <td><code>/</code></td>
+                    <td>app/page.tsx</td>
+                    <td>❌ No</td>
+                </tr>
+                <tr>
+                    <td><code>/sentic</code></td>
+                    <td>app/(dashboard)/sentic/page.tsx</td>
+                    <td>✅ Yes</td>
+                </tr>
+                <tr>
+                    <td><code>/alamix</code></td>
+                    <td>app/(dashboard)/alamix/page.tsx</td>
+                    <td>✅ Yes</td>
+                </tr>
+                <tr>
+                    <td><code>/deoza</code></td>
+                    <td>app/(dashboard)/deoza/page.tsx</td>
+                    <td>✅ Yes</td>
+                </tr>
+                <tr>
+                    <td><code>/deoza/search</code></td>
+                    <td>app/(dashboard)/deoza/search/page.tsx</td>
+                    <td>✅ Yes</td>
+                </tr>
+                <tr>
+                    <td><code>/deoza/paper/:id</code></td>
+                    <td>app/(dashboard)/deoza/paper/[id]/page.tsx</td>
+                    <td>✅ Yes</td>
+                </tr>
+                <tr>
+                    <td><code>/deoza/library</code></td>
+                    <td>app/(dashboard)/deoza/library/page.tsx</td>
+                    <td>✅ Yes</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- ══ SECTION 4 ══ -->
+        <div class="section pb">
+            <div class="section-header">
+                <div class="section-num">4</div>
+                <div>
+                    <div class="section-title">Shared Layout System</div>
+                    <div class="section-subtitle">NavigationRail · Dashboard Shell · Framer Motion active indicator
+                    </div>
+                </div>
+            </div>
+
+            <h3>Dashboard Layout (<code>app/(dashboard)/layout.tsx</code>)</h3>
+            <p>The simplest layout in the codebase — just 17 lines. It wraps all tool pages in a flex container: fixed
+                80px NavigationRail on the left, and a <code>flex-1 pl-20</code> content area on the right.</p>
+            <pre>export default function DashboardLayout({ children }) {
+  return (
+    &lt;div className="flex min-h-screen"&gt;
+      &lt;NavigationRail /&gt;
+      &lt;div className="flex-1 pl-20 transition-all duration-300"&gt;
+        {children}
+      &lt;/div&gt;
+    &lt;/div&gt;
+  );
+}</pre>
+
+            <h3>NavigationRail Component (<code>components/NavigationRail.tsx</code>)</h3>
+            <p>A fixed 80px-wide vertical sidebar — the primary navigation for the entire platform. It uses
+                <code>usePathname()</code> to detect the active tool and animate the active indicator.</p>
+
+            <table>
+                <tr>
+                    <th>Element</th>
+                    <th>Detail</th>
+                </tr>
+                <tr>
+                    <td>Home button (top)</td>
+                    <td>Links to <code>/</code> — the landing page</td>
+                </tr>
+                <tr>
+                    <td>SENTIC nav item</td>
+                    <td>Icon: <code>Zap</code> · Color: purple · Path: <code>/sentic</code></td>
+                </tr>
+                <tr>
+                    <td>ALAMIX nav item</td>
+                    <td>Icon: <code>Layers</code> · Color: blue · Path: <code>/alamix</code></td>
+                </tr>
+                <tr>
+                    <td>DEOZA nav item</td>
+                    <td>Icon: <code>Cpu</code> · Color: emerald · Path: <code>/deoza</code></td>
+                </tr>
+                <tr>
+                    <td>Active indicator</td>
+                    <td>1px white left-edge bar with glow — animated with Framer Motion
+                        <code>layoutId="activeNav"</code> (smooth slide between tools)</td>
+                </tr>
+                <tr>
+                    <td>Tooltips</td>
+                    <td>CSS <code>opacity-0 group-hover:opacity-100</code> pill labels — appear on hover</td>
+                </tr>
+                <tr>
+                    <td>History button (bottom)</td>
+                    <td>Clock icon — only visible on tool pages. Calls <code>toggle()</code> from
+                        <code>useHistoryPanel</code> Zustand store</td>
+                </tr>
+                <tr>
+                    <td>Entrance animation</td>
+                    <td><code>initial={{ x: -100, opacity: 0 }}</code> → slides in from left on mount</td>
+                </tr>
+            </table>
+
+            <div class="callout purple">
+                <div class="callout-body">
+                    <div class="callout-title">layoutId Magic</div>
+                    <p class="callout-text">The white active indicator uses Framer Motion's
+                        <code>layoutId="activeNav"</code> — this means when switching from SENTIC to DEOZA, the
+                        indicator <strong>slides smoothly</strong> from one position to the other, rather than
+                        disappearing and reappearing. This is a shared layout animation.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ SECTION 5 ══ -->
+        <div class="section pb">
+            <div class="section-header">
+                <div class="section-num">5</div>
+                <div>
+                    <div class="section-title">The Three AI Tools — High-Level Summary</div>
+                    <div class="section-subtitle">What each tool does, what powers it, and its output</div>
+                </div>
+            </div>
+
+            <h3>SENTIC — Text Humanization Engine</h3>
+            <p>SENTIC transforms AI-generated text into authentic-sounding human writing by attacking AI detection at
+                three distinct layers simultaneously.</p>
+            <table>
+                <tr>
+                    <th>Layer</th>
+                    <th>What it does</th>
+                    <th>How</th>
+                </tr>
+                <tr>
+                    <td>Pre-processing</td>
+                    <td>Strip AI-isms from input</td>
+                    <td>Regex ban-list of words like "comprehensive", "delve", "leverage"</td>
+                </tr>
+                <tr>
+                    <td>Stage 1</td>
+                    <td>Linguistic Entropy rewrite</td>
+                    <td>Groq LLaMA 70B — Perplexity + Burstiness master prompt. Chunks text if &gt;300 words</td>
+                </tr>
+                <tr>
+                    <td>Stage 2</td>
+                    <td>Pragmatic marker injection</td>
+                    <td>Python FastAPI + custom algorithm — injects human discourse signals ("Frankly", "In practice")
+                    </td>
+                </tr>
+                <tr>
+                    <td>Client-side</td>
+                    <td>AI Score Estimator</td>
+                    <td>Formula: sentence length variance + banned word hits + punctuation richness</td>
+                </tr>
+                <tr>
+                    <td>Post-processing</td>
+                    <td>Text cleanup settings</td>
+                    <td>User-controlled: remove Unicode, dashes, quotes, whitespace</td>
+                </tr>
+            </table>
+            <p><strong>Output panels:</strong> Humanized Text · AI Score Badge · Pipeline Log · Entropy Parameters ·
+                Explainability Log</p>
+
+            <h3>ALAMIX — Research Intelligence Engine</h3>
+            <p>ALAMIX uploads a PDF or DOCX, extracts raw text via Python, then sends it to Groq for structured academic
+                analysis at temperature=0 (fully deterministic).</p>
+            <table>
+                <tr>
+                    <th>Stage</th>
+                    <th>What it does</th>
+                    <th>How</th>
+                </tr>
+                <tr>
+                    <td>Frontend</td>
+                    <td>File upload, simulated progress (4 steps)</td>
+                    <td>React state, FormData, drag-drop</td>
+                </tr>
+                <tr>
+                    <td>Stage 1</td>
+                    <td>Text extraction from PDF/DOCX</td>
+                    <td>Python FastAPI <code>/extract-text</code> endpoint (PyMuPDF / python-docx)</td>
+                </tr>
+                <tr>
+                    <td>Stage 2</td>
+                    <td>Academic intelligence extraction</td>
+                    <td>Groq at temperature=0, JSON mode — 16-field structured output</td>
+                </tr>
+                <tr>
+                    <td>Output UI</td>
+                    <td>Intelligence Report</td>
+                    <td>12-column grid, 15 expandable AcademicCards, sticky sidebar</td>
+                </tr>
+                <tr>
+                    <td>Chatbot</td>
+                    <td>Paper Q&amp;A</td>
+                    <td>DEOZA chat endpoint (<code>/api/deoza/chat</code>) with paper context injected</td>
+                </tr>
+                <tr>
+                    <td>Export</td>
+                    <td>PDF generation</td>
+                    <td>In-browser jsPDF — A4 formatted document download</td>
+                </tr>
+            </table>
+            <p><strong>16 JSON fields extracted:</strong> title, authors, abstract, keywords, methodology,
+                contributions, results, limitations, future work, dataset, evaluation metrics, research gap, theoretical
+                framework, practical applications, related works, conclusion.</p>
+
+            <h3>DEOZA — Research Intelligence Platform</h3>
+            <p>DEOZA is a live academic search engine with four AI layers on top of every search query and paper.</p>
+            <table>
+                <tr>
+                    <th>Feature</th>
+                    <th>What it does</th>
+                    <th>API</th>
+                </tr>
+                <tr>
+                    <td>Dual-source search</td>
+                    <td>Queries Semantic Scholar + arXiv in parallel, merges and ranks up to 30 papers</td>
+                    <td><code>/api/deoza/search</code></td>
+                </tr>
+                <tr>
+                    <td>Field Intelligence</td>
+                    <td>Generates a 4-section domain briefing for any search query</td>
+                    <td><code>/api/deoza/insight</code></td>
+                </tr>
+                <tr>
+                    <td>Paper Summarizer</td>
+                    <td>7-point structured analysis of any paper (summary, methodology, gaps, future work)</td>
+                    <td><code>/api/deoza/summarize</code></td>
+                </tr>
+                <tr>
+                    <td>Paper Q&amp;A Chat</td>
+                    <td>Multi-turn context-grounded chatbot grounded in paper title + abstract</td>
+                    <td><code>/api/deoza/chat</code></td>
+                </tr>
+                <tr>
+                    <td>Personal Library</td>
+                    <td>Save any paper to localStorage-persisted Zustand store</td>
+                    <td>Client-side only</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- ══ SECTION 6 ══ -->
+        <div class="section pb">
+            <div class="section-header">
+                <div class="section-num">6</div>
+                <div>
+                    <div class="section-title">Shared Infrastructure</div>
+                    <div class="section-subtitle">History system · Zustand stores · localStorage · Unified sidebar</div>
+                </div>
+            </div>
+
+            <p>All three tools share a single, unified history system built on <strong>LocalStorage + Zustand</strong>.
+                This means history is persisted across sessions and survives page refreshes — without any database.</p>
+
+            <h3>History Architecture</h3>
+            <table>
+                <tr>
+                    <th>Tool</th>
+                    <th>localStorage Key</th>
+                    <th>Item Fields Stored</th>
+                    <th>Max Items</th>
+                </tr>
+                <tr>
+                    <td>SENTIC</td>
+                    <td><code>sentic_history</code></td>
+                    <td>id, original (input text), humanized (output text), timestamp</td>
+                    <td>20</td>
+                </tr>
+                <tr>
+                    <td>ALAMIX</td>
+                    <td><code>alamix_history</code></td>
+                    <td>id, fileName, title (extracted), authors (extracted), timestamp</td>
+                    <td>20</td>
+                </tr>
+                <tr>
+                    <td>DEOZA</td>
+                    <td><code>deoza_history</code></td>
+                    <td>id, query, resultCount, timestamp — deduplicated by query string</td>
+                    <td>30</td>
+                </tr>
+            </table>
+
+            <h3>UnifiedHistorySidebar Component</h3>
+            <p>One single <code>UnifiedHistorySidebar</code> component handles all three tools. It receives a
+                <code>tool</code> prop (<code>"sentic" | "alamix" | "deoza"</code>) and reads from the corresponding
+                localStorage key. The sidebar:</p>
+            <ul class="std">
+                <li>Slides in from the left with a <strong>spring animation</strong>
+                    (<code>type: "spring", damping: 28, stiffness: 300</code>)</li>
+                <li>Opens/closes via <code>useHistoryPanel()</code> Zustand atom — toggled by the Clock icon in the
+                    NavigationRail</li>
+                <li>Shows tool-coloured headers: purple for SENTIC, blue for ALAMIX, emerald for DEOZA</li>
+                <li>Per-item delete (hover to reveal trash icon) + Clear All button at bottom</li>
+                <li>For SENTIC: clicking a history item calls <code>onSenticSelect(item)</code> to restore the humanized
+                    text to the UI</li>
+                <li>For DEOZA: clicking calls <code>onDeozaSelect(query)</code> to re-trigger that search</li>
+            </ul>
+
+            <h3>Zustand Stores</h3>
+            <table>
+                <tr>
+                    <th>Store</th>
+                    <th>File</th>
+                    <th>Used By</th>
+                    <th>Key State</th>
+                </tr>
+                <tr>
+                    <td>History panel</td>
+                    <td><code>lib/history-store.ts</code></td>
+                    <td>All tools + NavigationRail</td>
+                    <td><code>isOpen</code>, <code>toggle()</code>, <code>close()</code></td>
+                </tr>
+                <tr>
+                    <td>DEOZA store</td>
+                    <td><code>lib/deoza-store.ts</code></td>
+                    <td>DEOZA pages + components</td>
+                    <td>searchQuery, searchResults, isSearching, filters, savedPapers</td>
+                </tr>
+            </table>
+            <p>SENTIC and ALAMIX do not use Zustand — their state is managed locally within their page components using
+                React <code>useState</code>. Only DEOZA needs cross-page state because its search results must survive
+                navigation (search → detail → back).</p>
+        </div>
+
+        <!-- ══ SECTION 7 ══ -->
+        <div class="section pb">
+            <div class="section-header">
+                <div class="section-num">7</div>
+                <div>
+                    <div class="section-title">API Layer — All Endpoints at a Glance</div>
+                    <div class="section-subtitle">7 API routes · Serverless Next.js + 1 Python server</div>
+                </div>
+            </div>
+
+            <div class="route-grid">
+                <div class="route-card">
+                    <div class="rpath">POST /api/humanize</div>
+                    <div class="rdesc">SENTIC main pipeline. Strips AI-isms, chunks text, runs Groq Stage 1 (entropy
+                        rewrite), calls Python Stage 2 (marker injection). Returns humanizedText + analysis +
+                        explainability.</div>
+                </div>
+                <div class="route-card">
+                    <div class="rpath">POST /api/alamix/extract</div>
+                    <div class="rdesc">ALAMIX extraction. Calls Python for text extraction first, then Groq at
+                        temperature=0 in JSON mode. Returns structured 16-field AcademicResult JSON.</div>
+                </div>
+                <div class="route-card">
+                    <div class="rpath">POST /api/deoza/search</div>
+                    <div class="rdesc">DEOZA search. Queries Semantic Scholar API + arXiv Atom/XML in parallel. Applies
+                        filters, runs smart ranking algorithm, returns up to 30 UnifiedPaper objects.</div>
+                </div>
+                <div class="route-card">
+                    <div class="rpath">POST /api/deoza/insight</div>
+                    <div class="rdesc">Field Intelligence briefing. Takes a query string, returns a 4-section domain
+                        briefing from Groq. temperature=0.5, max_tokens=600.</div>
+                </div>
+                <div class="route-card">
+                    <div class="rpath">POST /api/deoza/summarize</div>
+                    <div class="rdesc">Paper Analyzer. Takes title + abstract, returns 7-point structured analysis from
+                        Groq. temperature=0.4. Used by AISummaryPanel on paper detail page.</div>
+                </div>
+                <div class="route-card">
+                    <div class="rpath">POST /api/deoza/chat</div>
+                    <div class="rdesc">Chatbot. Takes paper title, abstract, and full message history[]. Injects paper
+                        context into system prompt. temperature=0.6, max_tokens=1024.</div>
+                </div>
+                <div class="route-card">
+                    <div class="rpath">POST :8000/inject-markers (Python)</div>
+                    <div class="rdesc">Python FastAPI — Stage 2 of SENTIC. Injects human pragmatic markers ("Frankly",
+                        "In practice") into text. Called with 3s timeout from /api/humanize.</div>
+                </div>
+                <div class="route-card">
+                    <div class="rpath">POST :8000/extract-text (Python)</div>
+                    <div class="rdesc">Python FastAPI — Stage 1 of ALAMIX. Extracts raw text from PDF (PyMuPDF) or DOCX
+                        (python-docx). Returns clean normalized text string.</div>
+                </div>
+            </div>
+
+            <h3>All Groq Calls — Parameters Summary</h3>
+            <table>
+                <tr>
+                    <th>Endpoint</th>
+                    <th>Model</th>
+                    <th>Temp</th>
+                    <th>Max Tokens</th>
+                    <th>Response Format</th>
+                </tr>
+                <tr>
+                    <td>SENTIC humanize</td>
+                    <td>llama-3.3-70b-versatile</td>
+                    <td>Dynamic (entropy)</td>
+                    <td>Default</td>
+                    <td>Plain text</td>
+                </tr>
+                <tr>
+                    <td>ALAMIX extract</td>
+                    <td>llama-3.3-70b-versatile</td>
+                    <td>0.0</td>
+                    <td>Default</td>
+                    <td>JSON object</td>
+                </tr>
+                <tr>
+                    <td>DEOZA insight</td>
+                    <td>llama-3.3-70b-versatile</td>
+                    <td>0.5</td>
+                    <td>600</td>
+                    <td>Plain text</td>
+                </tr>
+                <tr>
+                    <td>DEOZA summarize</td>
+                    <td>llama-3.3-70b-versatile</td>
+                    <td>0.4</td>
+                    <td>Default</td>
+                    <td>Plain text</td>
+                </tr>
+                <tr>
+                    <td>DEOZA chat</td>
+                    <td>llama-3.3-70b-versatile</td>
+                    <td>0.6</td>
+                    <td>1024</td>
+                    <td>Plain text</td>
+                </tr>
+            </table>
+            <p>All five Groq calls share the same model. Temperature is the key differentiator — from 0.0 (deterministic
+                extraction) up to 0.6 (natural conversation).</p>
+        </div>
+
+        <!-- ══ SECTION 8 ══ -->
+        <div class="section pb">
+            <div class="section-header">
+                <div class="section-num">8</div>
+                <div>
+                    <div class="section-title">Design System &amp; Frontend Stack</div>
+                    <div class="section-subtitle">Dark aesthetic · Typography · Animation · Component library</div>
+                </div>
+            </div>
+
+            <h3>Visual Identity</h3>
+            <table>
+                <tr>
+                    <th>Element</th>
+                    <th>Specification</th>
+                </tr>
+                <tr>
+                    <td>Background</td>
+                    <td>Near-black: <code>#05010d</code> (landing) / <code>#080b12</code> (tools)</td>
+                </tr>
+                <tr>
+                    <td>Typography — Display</td>
+                    <td>Orbitron (Google Fonts) — all titles and tool names. Loaded via <code>next/font</code> with CSS
+                        variable <code>--font-orbitron</code></td>
+                </tr>
+                <tr>
+                    <td>Typography — Body</td>
+                    <td>Inter (Google Fonts) — all body text, labels, descriptions</td>
+                </tr>
+                <tr>
+                    <td>Platform accent</td>
+                    <td>Purple/Indigo in Hero and NavigationRail: <code>#7c3aed → #4f46e5</code></td>
+                </tr>
+                <tr>
+                    <td>SENTIC accent</td>
+                    <td>Purple: <code>purple-400/600</code></td>
+                </tr>
+                <tr>
+                    <td>ALAMIX accent</td>
+                    <td>Blue/Cyan: <code>blue-400/600</code></td>
+                </tr>
+                <tr>
+                    <td>DEOZA accent</td>
+                    <td>Emerald/Teal: <code>emerald-400/600</code></td>
+                </tr>
+                <tr>
+                    <td>Glassmorphism</td>
+                    <td><code>bg-white/5</code> backgrounds + <code>border-white/10</code> borders +
+                        <code>backdrop-blur-xl</code></td>
+                </tr>
+                <tr>
+                    <td>Ambient glows</td>
+                    <td>Blurred radial divs: <code>w-[800px] h-[800px] bg-purple-600/40 blur-[200px]</code></td>
+                </tr>
+            </table>
+
+            <h3>Animation Stack</h3>
+            <table>
+                <tr>
+                    <th>Animation Type</th>
+                    <th>Library</th>
+                    <th>Used For</th>
+                </tr>
+                <tr>
+                    <td>Element entrance</td>
+                    <td>Framer Motion</td>
+                    <td>Page elements fade-up/slide-in on mount. Staggered card grids with
+                        <code>delay: index * 0.04</code></td>
+                </tr>
+                <tr>
+                    <td>Scroll-triggered</td>
+                    <td>Framer Motion <code>useInView</code></td>
+                    <td>Landing page sections animate in as user scrolls</td>
+                </tr>
+                <tr>
+                    <td>Shared layout</td>
+                    <td>Framer Motion <code>layoutId</code></td>
+                    <td>NavRail active indicator smooth-slides between tools</td>
+                </tr>
+                <tr>
+                    <td>Panel expand/collapse</td>
+                    <td>Framer Motion <code>AnimatePresence</code></td>
+                    <td>History sidebar, AISummaryPanel, FieldInsightPanel</td>
+                </tr>
+                <tr>
+                    <td>Background breathe</td>
+                    <td>CSS <code>@keyframes breathe</code></td>
+                    <td>Ambient glow orbs pulse slowly (7s cycle)</td>
+                </tr>
+                <tr>
+                    <td>Icon float</td>
+                    <td>CSS <code>@keyframes float</code></td>
+                    <td>Tool card icons float up-down (5s cycle)</td>
+                </tr>
+                <tr>
+                    <td>Neural lines</td>
+                    <td>Framer Motion SVG <code>pathLength</code></td>
+                    <td>Animated SVG paths on landing hero background</td>
+                </tr>
+            </table>
+
+            <h3>Frontend Libraries</h3>
+            <table>
+                <tr>
+                    <th>Library</th>
+                    <th>Purpose</th>
+                </tr>
+                <tr>
+                    <td>Next.js 14</td>
+                    <td>App Router, API routes, server components, <code>next/font</code></td>
+                </tr>
+                <tr>
+                    <td>React 18</td>
+                    <td>Client components, useState, useEffect, useRef, Suspense</td>
+                </tr>
+                <tr>
+                    <td>TailwindCSS</td>
+                    <td>All styling — utility-first CSS with custom values inline</td>
+                </tr>
+                <tr>
+                    <td>Framer Motion</td>
+                    <td>All animations — entrance, exit, layout, scroll-trigger, SVG</td>
+                </tr>
+                <tr>
+                    <td>Zustand</td>
+                    <td>Global state — history panel open/close, DEOZA search state + library</td>
+                </tr>
+                <tr>
+                    <td>Lucide React</td>
+                    <td>Icon library — Home, Zap, Layers, Cpu, Sparkles, Clock, Search, Bookmark etc.</td>
+                </tr>
+                <tr>
+                    <td>jsPDF</td>
+                    <td>ALAMIX PDF export — in-browser A4 document generation</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- ══ SECTION 9 ══ -->
+        <div class="section pb">
+            <div class="section-header">
+                <div class="section-num">9</div>
+                <div>
+                    <div class="section-title">Landing Page Architecture</div>
+                    <div class="section-subtitle">app/page.tsx · 5 sections · Full-page marketing experience</div>
+                </div>
+            </div>
+
+            <p>The ALTRIX landing page (<code>app/page.tsx</code>, 452 lines) is a fully client-side, scroll-animated
+                marketing page that serves as the platform's front door. It has no NavigationRail — it's standalone.
+                Five sections:</p>
+
+            <table>
+                <tr>
+                    <th>Section</th>
+                    <th>ID</th>
+                    <th>Key Elements</th>
+                </tr>
+                <tr>
+                    <td>Hero</td>
+                    <td>–</td>
+                    <td>"ALTRIX" title in Orbitron (clamp: 5rem–9rem), animated NeuralLines SVG background, breathing
+                        ambient glows, CTA buttons, scroll chevron</td>
+                </tr>
+                <tr>
+                    <td>Ecosystem</td>
+                    <td><code>#ecosystem</code></td>
+                    <td>3-column tool card grid — each card links to its tool. Gradient glow borders, floating icons,
+                        scan-line animations. FadeUp on scroll using <code>useInView</code></td>
+                </tr>
+                <tr>
+                    <td>How It Works</td>
+                    <td>–</td>
+                    <td>3-step flow: Input → Process → Output. Glass panels with animated arrow connectors between steps
+                    </td>
+                </tr>
+                <tr>
+                    <td>About</td>
+                    <td><code>#about</code></td>
+                    <td>What is ALTRIX? paragraph + 3 value proposition stat cards</td>
+                </tr>
+                <tr>
+                    <td>Vision</td>
+                    <td>–</td>
+                    <td>Future roadmap teaser with an animated scanning gradient line</td>
+                </tr>
+            </table>
+
+            <h3>Key Reusable Helpers defined in page.tsx</h3>
+            <table>
+                <tr>
+                    <th>Helper</th>
+                    <th>Purpose</th>
+                </tr>
+                <tr>
+                    <td><code>FadeUp</code></td>
+                    <td>Scroll-triggered fade+slide animation wrapper using <code>useInView</code> with
+                        <code>margin: "-60px"</code> trigger</td>
+                </tr>
+                <tr>
+                    <td><code>NeuralLines</code></td>
+                    <td>SVG component rendering 7 animated Bezier paths + glowing nodes simulating a neural network
+                        background</td>
+                </tr>
+                <tr>
+                    <td><code>SectionLabel</code></td>
+                    <td>Section label with horizontal lines on each side — reused in Ecosystem, About, Vision sections
+                    </td>
+                </tr>
+            </table>
+
+            <div class="callout success">
+                <div class="callout-body">
+                    <div class="callout-title">No Auth, No Database</div>
+                    <p class="callout-text">ALTRIX has <strong>no authentication layer and no server-side
+                            database</strong>. All user data (history, saved papers) lives in the browser's
+                        localStorage. This makes the platform instantly usable — no sign-up required — and fully
+                        stateless on the server side for the Next.js layer.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ SECTION 10 ══ -->
+        <div class="section">
+            <div class="section-header">
+                <div class="section-num">10</div>
+                <div>
+                    <div class="section-title">Complete File Map</div>
+                    <div class="section-subtitle">Every file in the platform, its role, and its layer</div>
+                </div>
+            </div>
+
+            <h3>Pages</h3>
+            <div class="file-map">
+                <div class="file-card">
+                    <div class="fname">src/app/page.tsx</div>
+                    <div class="frole">Landing — 5-section animated marketing page. No NavRail. Hero → Ecosystem → How
+                        it Works → About → Vision.</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/app/layout.tsx</div>
+                    <div class="frole">Root layout — loads Inter + Orbitron fonts via next/font. Sets metadata title and
+                        description. Wraps entire app in html/body.</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/app/(dashboard)/layout.tsx</div>
+                    <div class="frole">Dashboard shell — NavigationRail + flex-1 content area with 80px left padding.
+                        Shared by all 3 tool pages.</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/app/(dashboard)/sentic/page.tsx</div>
+                    <div class="frole">SENTIC page — full humanizer UI. Input, controls (Audience, Entropy Level),
+                        output panels, AI Score, pipeline log.</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/app/(dashboard)/alamix/page.tsx</div>
+                    <div class="frole">ALAMIX page — file upload, 4-step progress, intelligence report grid, 15
+                        AcademicCards, chatbot panel, PDF export.</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/app/(dashboard)/deoza/page.tsx</div>
+                    <div class="frole">DEOZA homepage — hero SearchBar, Quick Chips, library shortcut pill.</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/app/(dashboard)/deoza/search/page.tsx</div>
+                    <div class="frole">Search results — FilterPanel, FieldInsightPanel, PaperCard grid, history
+                        recording.</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/app/(dashboard)/deoza/paper/[id]/page.tsx</div>
+                    <div class="frole">Paper detail — AISummaryPanel + ChatPanel. Paper data decoded from URL search
+                        params.</div>
+                </div>
+            </div>
+
+            <h3>API Routes</h3>
+            <div class="file-map">
+                <div class="file-card">
+                    <div class="fname">src/app/api/humanize/route.ts</div>
+                    <div class="frole">SENTIC pipeline: strip AI-isms → chunk → Groq Stage 1 → Python Stage 2 → return
+                        text + analysis + explainability.</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/app/api/alamix/extract/route.ts</div>
+                    <div class="frole">ALAMIX extractor: calls Python for text → sends to Groq temperature=0 JSON mode →
+                        returns AcademicResult.</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/app/api/deoza/search/route.ts</div>
+                    <div class="frole">Dual-source search: Promise.all([SemanticScholar, arXiv]) → normalize to
+                        UnifiedPaper → filter → rank → return.</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/app/api/deoza/insight/route.ts</div>
+                    <div class="frole">Field Intelligence: takes query → Groq temp=0.5, max_tokens=600 → returns
+                        4-section briefing.</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/app/api/deoza/summarize/route.ts</div>
+                    <div class="frole">Paper Summarizer: title + abstract → Groq temp=0.4 + system prompt → returns
+                        7-section analysis.</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/app/api/deoza/chat/route.ts</div>
+                    <div class="frole">Chatbot: paper context + message history → Groq temp=0.6, max_tokens=1024 → chat
+                        response.</div>
+                </div>
+            </div>
+
+            <h3>Shared Components</h3>
+            <div class="file-map">
+                <div class="file-card">
+                    <div class="fname">src/components/NavigationRail.tsx</div>
+                    <div class="frole">80px fixed sidebar — Home + 3 tool links with active indicator (Framer Motion
+                        layoutId) + History toggle.</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/components/UnifiedHistorySidebar.tsx</div>
+                    <div class="frole">Spring-animated history drawer — handles all 3 tools (sentic/alamix/deoza).
+                        Reads/writes tool-specific localStorage keys.</div>
+                </div>
+            </div>
+
+            <h3>DEOZA Components</h3>
+            <div class="file-map">
+                <div class="file-card">
+                    <div class="fname">src/components/deoza/SearchBar.tsx</div>
+                    <div class="frole">Hero + compact search input. Quick Chips (6 preset topics). Enter to submit →
+                        router.push to search page.</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/components/deoza/PaperCard.tsx</div>
+                    <div class="frole">Result card with Framer Motion entrance, staggered delays, source badge
+                        (Semantic/arXiv), save/unsave, AI Summary nav.</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/components/deoza/FieldInsightPanel.tsx</div>
+                    <div class="frole">Lazy AI field briefing panel. Fetches on expand. Cached per query. Resets on
+                        query change.</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/components/deoza/AISummaryPanel.tsx</div>
+                    <div class="frole">Lazy 7-section paper analysis panel. formatAnalysis() splits by numbered
+                        headings. Shows each section with left border.</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/components/deoza/ChatPanel.tsx</div>
+                    <div class="frole">Multi-turn chatbot UI. Quick Questions chips. Full message history maintained in
+                        state and forwarded to API.</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/components/deoza/FilterPanel.tsx</div>
+                    <div class="frole">Search filter sidebar — source (all/semantic/arxiv), open access toggle, year
+                        range, min citations.</div>
+                </div>
+            </div>
+
+            <h3>State &amp; Utilities</h3>
+            <div class="file-map">
+                <div class="file-card">
+                    <div class="fname">src/lib/history-store.ts</div>
+                    <div class="frole">Tiny Zustand store — isOpen boolean for the history sidebar panel. toggle() and
+                        close() actions.</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/lib/deoza-store.ts</div>
+                    <div class="frole">Zustand store for DEOZA — searchQuery, searchResults, isSearching, filters
+                        object, savedPapers[] (persisted to localStorage).</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/lib/file-processing.ts</div>
+                    <div class="frole">ALAMIX file upload utilities — file validation, FormData construction, progress
+                        simulation helpers.</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/lib/antigravity.ts</div>
+                    <div class="frole">Shared API utilities / configuration helpers used across the platform.</div>
+                </div>
+            </div>
+
+            <h3>Python Backend (ai-humanizer/)</h3>
+            <div class="file-map">
+                <div class="file-card">
+                    <div class="fname">ai-humanizer/fastapi_app.py</div>
+                    <div class="frole">FastAPI server on :8000. Endpoints: POST /inject-markers (SENTIC Stage 2), POST
+                        /extract-text (ALAMIX Stage 1), legacy POST /humanize.</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">ai-humanizer/humanizer.py</div>
+                    <div class="frole">Pragmatic marker injection logic — marker pools
+                        (hedging/emphasis/transition/contrast/consequence), inject_pragmatic_markers(), _needs_marker().
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <span>ALTRIX · Platform Architecture Document · Intelligence, Amplified.</span>
+            <span>February 2026</span>
+        </div>
+    </div>
+</body>
+
+</html>

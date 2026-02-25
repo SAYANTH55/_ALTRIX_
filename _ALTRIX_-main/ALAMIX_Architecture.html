@@ -1,0 +1,1530 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ALAMIX — Architecture & Technical Documentation</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+
+        :root {
+            --blue: #2563eb;
+            --blue-light: #93c5fd;
+            --indigo: #4f46e5;
+            --emerald: #059669;
+            --amber: #d97706;
+            --red: #dc2626;
+            --bg: #ffffff;
+            --text: #111827;
+            --muted: #6b7280;
+            --border: #e5e7eb;
+            --code-bg: #f3f4f6;
+            --tag-bg: #eff6ff;
+            --tag-border: #bfdbfe;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 10.5pt;
+            line-height: 1.7;
+        }
+
+        .page {
+            width: 210mm;
+            margin: 0 auto;
+            padding: 14mm 16mm;
+        }
+
+        /* Cover */
+        .cover {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            border-bottom: 2px solid var(--border);
+            padding: 40px 0 60px;
+            page-break-after: always;
+        }
+
+        .cover-badge {
+            display: inline-block;
+            font-size: 8pt;
+            font-weight: 700;
+            letter-spacing: .35em;
+            text-transform: uppercase;
+            color: var(--blue);
+            background: var(--tag-bg);
+            border: 1px solid var(--tag-border);
+            padding: 5px 16px;
+            border-radius: 999px;
+            margin-bottom: 28px;
+        }
+
+        .cover h1 {
+            font-size: 52pt;
+            font-weight: 800;
+            letter-spacing: .22em;
+            background: linear-gradient(135deg, #2563eb, #4f46e5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+            line-height: 1;
+        }
+
+        .cover-sub {
+            font-size: 13pt;
+            font-weight: 500;
+            letter-spacing: .18em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 36px;
+        }
+
+        .cover-tagline {
+            font-size: 10.5pt;
+            color: var(--muted);
+            font-weight: 300;
+            letter-spacing: .1em;
+            margin-bottom: 52px;
+        }
+
+        .cover-meta {
+            display: flex;
+            gap: 24px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .cover-meta span {
+            font-size: 8.5pt;
+            color: var(--muted);
+            font-weight: 500;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            padding: 6px 18px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        /* TOC */
+        .toc {
+            page-break-after: always;
+            padding-top: 20px;
+        }
+
+        .toc h2 {
+            font-size: 15pt;
+            font-weight: 700;
+            color: var(--blue);
+            margin-bottom: 22px;
+            letter-spacing: .05em;
+        }
+
+        .toc-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 0;
+            border-bottom: 1px dotted var(--border);
+            font-size: 10pt;
+        }
+
+        .toc-num {
+            font-weight: 700;
+            color: var(--blue);
+            min-width: 28px;
+            font-size: 9pt;
+        }
+
+        .toc-label {
+            flex: 1;
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        /* Sections */
+        .section {
+            margin-bottom: 36px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 18px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .section-num {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--blue), var(--indigo));
+            color: white;
+            font-weight: 800;
+            font-size: 12pt;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .section-title {
+            font-size: 14pt;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .section-subtitle {
+            font-size: 8.5pt;
+            color: var(--blue);
+            font-weight: 600;
+            letter-spacing: .15em;
+            text-transform: uppercase;
+        }
+
+        h3 {
+            font-size: 11pt;
+            font-weight: 700;
+            color: var(--text);
+            margin: 20px 0 10px;
+            padding-left: 12px;
+            border-left: 3px solid var(--blue-light);
+        }
+
+        h4 {
+            font-size: 8.5pt;
+            font-weight: 600;
+            color: var(--blue);
+            margin: 14px 0 7px;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+        }
+
+        p {
+            margin-bottom: 10px;
+            color: #374151;
+        }
+
+        /* Architecture box */
+        .arch-diagram {
+            background: #eff6ff;
+            border: 1.5px solid var(--tag-border);
+            border-radius: 14px;
+            padding: 24px 28px;
+            margin: 16px 0 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8pt;
+            line-height: 1.9;
+            color: #374151;
+            white-space: pre;
+        }
+
+        /* Code */
+        pre {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 7.8pt;
+            line-height: 1.65;
+            overflow: hidden;
+            margin: 12px 0 16px;
+            color: #1f2937;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8.5pt;
+            background: var(--code-bg);
+            padding: 1px 5px;
+            border-radius: 4px;
+            color: var(--blue);
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0 18px;
+            font-size: 9.5pt;
+        }
+
+        th {
+            background: linear-gradient(135deg, var(--blue), var(--indigo));
+            color: white;
+            padding: 9px 14px;
+            text-align: left;
+            font-weight: 700;
+            font-size: 8.5pt;
+            letter-spacing: .05em;
+        }
+
+        th:first-child {
+            border-radius: 8px 0 0 0;
+        }
+
+        th:last-child {
+            border-radius: 0 8px 0 0;
+        }
+
+        td {
+            padding: 8px 14px;
+            border-bottom: 1px solid var(--border);
+            color: #374151;
+            vertical-align: top;
+        }
+
+        tr:nth-child(even) td {
+            background: #f9fafb;
+        }
+
+        td:first-child {
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        /* Callouts */
+        .callout {
+            border-radius: 12px;
+            padding: 14px 18px;
+            margin: 14px 0;
+            display: flex;
+            gap: 13px;
+            align-items: flex-start;
+        }
+
+        .callout-icon {
+            font-size: 15pt;
+            line-height: 1;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .callout-body {
+            flex: 1;
+        }
+
+        .callout-title {
+            font-weight: 700;
+            font-size: 9.5pt;
+            margin-bottom: 4px;
+        }
+
+        .callout-text {
+            font-size: 9pt;
+            line-height: 1.6;
+            color: #374151;
+            margin: 0;
+        }
+
+        .callout.info {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+        }
+
+        .callout.info .callout-title {
+            color: var(--blue);
+        }
+
+        .callout.success {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+        }
+
+        .callout.success .callout-title {
+            color: var(--emerald);
+        }
+
+        .callout.warning {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+        }
+
+        .callout.warning .callout-title {
+            color: var(--amber);
+        }
+
+        .callout.purple {
+            background: #f5f3ff;
+            border: 1px solid #ddd6fe;
+        }
+
+        .callout.purple .callout-title {
+            color: #7c3aed;
+        }
+
+        /* Stage pill */
+        .stage-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 14px;
+            border-radius: 999px;
+            font-size: 8pt;
+            font-weight: 700;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .stage-pill.blue {
+            background: #eff6ff;
+            color: var(--blue);
+            border: 1px solid #bfdbfe;
+        }
+
+        .stage-pill.yellow {
+            background: #fffbeb;
+            color: var(--amber);
+            border: 1px solid #fde68a;
+        }
+
+        .stage-pill.green {
+            background: #f0fdf4;
+            color: var(--emerald);
+            border: 1px solid #bbf7d0;
+        }
+
+        .stage-pill.purple {
+            background: #f5f3ff;
+            color: #7c3aed;
+            border: 1px solid #ddd6fe;
+        }
+
+        /* Flow list */
+        .flow-list {
+            counter-reset: flow;
+            list-style: none;
+            margin: 14px 0;
+            padding: 0;
+        }
+
+        .flow-list li {
+            counter-increment: flow;
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+            padding: 8px 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .flow-list li::before {
+            content: counter(flow);
+            min-width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--blue), var(--indigo));
+            color: white;
+            font-weight: 800;
+            font-size: 8pt;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .flow-list li span {
+            font-size: 9.5pt;
+            color: #374151;
+            line-height: 1.6;
+        }
+
+        /* File map */
+        .file-map {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 14px 0;
+        }
+
+        .file-card {
+            background: #eff6ff;
+            border: 1px solid var(--tag-border);
+            border-radius: 10px;
+            padding: 12px 14px;
+        }
+
+        .file-card .fname {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 7.5pt;
+            color: var(--blue);
+            font-weight: 700;
+            margin-bottom: 5px;
+            word-break: break-all;
+        }
+
+        .file-card .frole {
+            font-size: 8.5pt;
+            color: #374151;
+            line-height: 1.5;
+        }
+
+        /* Directive box */
+        .directive {
+            background: #ffffff;
+            border: 1.5px solid var(--border);
+            border-left: 4px solid var(--blue-light);
+            border-radius: 0 10px 10px 0;
+            padding: 12px 16px;
+            margin: 11px 0;
+        }
+
+        .directive-title {
+            font-weight: 800;
+            font-size: 9pt;
+            color: var(--blue);
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            margin-bottom: 5px;
+        }
+
+        .directive p {
+            margin: 0;
+            font-size: 9pt;
+            color: #374151;
+        }
+
+        /* JSON schema block */
+        .json-block {
+            background: #1e1e2e;
+            border-radius: 12px;
+            padding: 18px 20px;
+            margin: 14px 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 7.8pt;
+            line-height: 1.75;
+            color: #cdd6f4;
+            overflow: hidden;
+        }
+
+        .json-key {
+            color: #89b4fa;
+        }
+
+        .json-str {
+            color: #a6e3a1;
+        }
+
+        .json-num {
+            color: #fab387;
+        }
+
+        .json-arr {
+            color: #f38ba8;
+        }
+
+        /* Section panels for output */
+        .output-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 14px 0;
+        }
+
+        .output-card {
+            background: #f9fafb;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 14px;
+        }
+
+        .output-card .onum {
+            font-size: 8pt;
+            font-weight: 800;
+            color: var(--blue);
+            margin-bottom: 4px;
+        }
+
+        .output-card .oname {
+            font-size: 10pt;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+
+        .output-card .odesc {
+            font-size: 8.5pt;
+            color: #6b7280;
+            line-height: 1.5;
+        }
+
+        .pb {
+            page-break-before: always;
+            padding-top: 20px;
+        }
+
+        .footer {
+            margin-top: 40px;
+            padding-top: 14px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            font-size: 7.5pt;
+            color: var(--muted);
+            letter-spacing: .08em;
+        }
+
+        @media print {
+            body {
+                font-size: 10pt;
+            }
+
+            .page {
+                padding: 10mm 14mm;
+            }
+
+            .cover {
+                min-height: auto;
+                padding: 30px 0 40px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page">
+
+        <!-- ══════ COVER ══════ -->
+        <div class="cover">
+            <div class="cover-badge">Technical Architecture Document</div>
+            <h1>ALAMIX</h1>
+            <div class="cover-sub">Research Intelligence Engine</div>
+            <div class="cover-tagline">Extracting meaning. Preserving truth.</div>
+            <div class="cover-meta">
+                <span>ALTRIX Platform</span>
+                <span>Groq LLaMA 3.3 70B</span>
+                <span>Zero-Hallucination Extraction</span>
+                <span>16-Section Academic Schema</span>
+                <span>February 2026</span>
+            </div>
+        </div>
+
+        <!-- ══════ TOC ══════ -->
+        <div class="toc">
+            <h2>Table of Contents</h2>
+            <div class="toc-item"><span class="toc-num">01</span><span class="toc-label">System Overview &amp;
+                    High-Level Architecture</span></div>
+            <div class="toc-item"><span class="toc-num">02</span><span class="toc-label">Stage 0 — Frontend: File Upload
+                    &amp; Processing</span></div>
+            <div class="toc-item"><span class="toc-num">03</span><span class="toc-label">Stage 1 — Python Backend: Text
+                    Extraction</span></div>
+            <div class="toc-item"><span class="toc-num">04</span><span class="toc-label">Stage 2 — Groq LLM: Academic
+                    Intelligence Extraction</span></div>
+            <div class="toc-item"><span class="toc-num">05</span><span class="toc-label">JSON Output Schema (Full
+                    16-Field Structure)</span></div>
+            <div class="toc-item"><span class="toc-num">06</span><span class="toc-label">Output Layer: Intelligence
+                    Report UI</span></div>
+            <div class="toc-item"><span class="toc-num">07</span><span class="toc-label">Research Chatbot (Context-Aware
+                    Q&amp;A)</span></div>
+            <div class="toc-item"><span class="toc-num">08</span><span class="toc-label">Academic Document Generator
+                    &amp; PDF Export</span></div>
+            <div class="toc-item"><span class="toc-num">09</span><span class="toc-label">Complete Request Flow</span>
+            </div>
+            <div class="toc-item"><span class="toc-num">10</span><span class="toc-label">File Map &amp; Technology
+                    Summary</span></div>
+        </div>
+
+        <!-- ══════ SECTION 1 ══════ -->
+        <div class="section pb">
+            <div class="section-header">
+                <div class="section-num">1</div>
+                <div>
+                    <div class="section-title">System Overview &amp; High-Level Architecture</div>
+                    <div class="section-subtitle">What ALAMIX is and how its stages connect</div>
+                </div>
+            </div>
+
+            <p>ALAMIX is the <strong>Research Intelligence Engine</strong> within the ALTRIX platform. Its purpose is to
+                accept any academic research paper (PDF or DOCX), extract and reconstruct all major academic components
+                using a Large Language Model, and present them in a structured, visually navigable Intelligence Report —
+                with zero hallucination and full semantic fidelity.</p>
+            <p>Unlike a summarizer, ALAMIX does not shorten text. It <em>reconstructs</em> the full academic skeleton:
+                abstract, introduction, literature review, research gap, methodology, results, discussion, conclusion,
+                and more — even when sections are implicit or missing from the original document.</p>
+
+            <div class="arch-diagram">DOCUMENT INPUT (PDF / DOCX)
+                │
+                ▼
+                ┌────────────────────────────────────────────────┐
+                │ ALAMIX Frontend (Next.js) │ src/.../alamix/page.tsx
+                │ · Drag-and-drop / click file upload │
+                │ · Upload progress animation (50ms ticks) │
+                │ · Processing step indicators (4 phases) │
+                └───────────────────┬────────────────────────────┘
+                │ POST /api/python/extract-text (multipart)
+                ▼
+                ┌────────────────────────────────────────────────┐
+                │ STAGE 1 — Python FastAPI Backend │ ai-humanizer/fastapi_app.py
+                │ Document Text Extraction │ ai-humanizer/document_reader.py
+                │ · PDF → pdfplumber / PyMuPDF │
+                │ · DOCX → python-docx │
+                │ · Whitespace normalisation │
+                └───────────────────┬────────────────────────────┘
+                │ POST /api/alamix/extract (JSON text)
+                ▼
+                ┌────────────────────────────────────────────────┐
+                │ STAGE 2 — Next.js API Route │ src/app/api/alamix/extract/route.ts
+                │ Groq LLM · LLaMA 3.3 70B Versatile │
+                │ Academic Intelligence Extraction │
+                │ · temperature: 0 (deterministic) │
+                │ · response_format: json_object │
+                │ · 25,000 char input limit │
+                └───────────────────┬────────────────────────────┘
+                │ JSON AcademicResult object
+                ▼
+                ┌─────────────────────────────────────┐
+                │ Intelligence Report UI │
+                │ · 16-section expandable cards │
+                │ · Sticky sidebar (Overview + Meth) │
+                │ · Copy / PDF export per card │
+                │ · Research Chatbot (context-aware) │
+                │ · Academic Document Generator │
+                └─────────────────────────────────────┘</div>
+
+            <div class="callout purple">
+                <div class="callout-icon">🎯</div>
+                <div class="callout-body">
+                    <div class="callout-title">Design Principle: Zero Hallucination</div>
+                    <p class="callout-text">ALAMIX instructs the LLM at temperature=0 (fully deterministic) to only
+                        extract or logically infer from the source document. It is explicitly forbidden from fabricating
+                        data or inventing research claims. Even inferring the Research Gap must be grounded in what the
+                        document actually discusses.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══════ SECTION 2 ══════ -->
+        <div class="section pb">
+            <div class="section-header">
+                <div class="section-num">2</div>
+                <div>
+                    <div class="section-title">Stage 0 — Frontend: File Upload &amp; Processing</div>
+                    <div class="section-subtitle">page.tsx · Next.js Client Component · React State Machine</div>
+                </div>
+            </div>
+            <div class="stage-pill blue">🔵 Stage 0 · Frontend · page.tsx</div>
+
+            <h3>Accepted File Types</h3>
+            <table>
+                <tr>
+                    <th>Format</th>
+                    <th>MIME Type</th>
+                    <th>Processing Path</th>
+                </tr>
+                <tr>
+                    <td>PDF</td>
+                    <td><code>application/pdf</code></td>
+                    <td>Python backend → pdfplumber/PyMuPDF</td>
+                </tr>
+                <tr>
+                    <td>DOCX</td>
+                    <td><code>application/vnd.openxmlformats-officedocument.wordprocessingml.document</code></td>
+                    <td>Python backend → python-docx</td>
+                </tr>
+            </table>
+            <p>Any file that is not PDF or DOCX is rejected with a user-facing error: <em>"This document does not appear
+                    to be a research paper."</em></p>
+
+            <h3>Upload Flow (Simulated Progress)</h3>
+            <p>When a file is selected (click or drag-and-drop), <code>simulateUpload()</code> is called. It increments
+                a progress bar by 10% every 50ms until it hits 100%, at which point <code>startProcessing()</code> is
+                called. This gives instant visual feedback while the actual API call is being made.</p>
+
+            <h3>Processing Step Indicators</h3>
+            <p>ALAMIX cycles through 4 text messages in the loading state, updated as the pipeline progresses:</p>
+            <table>
+                <tr>
+                    <th>Step</th>
+                    <th>Message</th>
+                    <th>When Triggered</th>
+                </tr>
+                <tr>
+                    <td>1</td>
+                    <td>"Analyzing document structure..."</td>
+                    <td>Before Python extraction call</td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td>"Extracting academic components..."</td>
+                    <td>After text extracted, before Groq call</td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td>"Verifying content consistency..."</td>
+                    <td>While Groq processes</td>
+                </tr>
+                <tr>
+                    <td>4</td>
+                    <td>"Finalizing research insights..."</td>
+                    <td>After Groq returns JSON</td>
+                </tr>
+            </table>
+
+            <h3>React State Managed on This Page</h3>
+            <table>
+                <tr>
+                    <th>State Variable</th>
+                    <th>Type</th>
+                    <th>Purpose</th>
+                </tr>
+                <tr>
+                    <td><code>file</code></td>
+                    <td><code>File | null</code></td>
+                    <td>Currently selected file object</td>
+                </tr>
+                <tr>
+                    <td><code>uploadProgress</code></td>
+                    <td><code>number</code></td>
+                    <td>0–100 progress bar value</td>
+                </tr>
+                <tr>
+                    <td><code>isProcessing</code></td>
+                    <td><code>boolean</code></td>
+                    <td>Shows loading spinner + step messages</td>
+                </tr>
+                <tr>
+                    <td><code>processingStep</code></td>
+                    <td><code>number</code></td>
+                    <td>Index into <code>processingMessages[]</code></td>
+                </tr>
+                <tr>
+                    <td><code>result</code></td>
+                    <td><code>AcademicResult | null</code></td>
+                    <td>Full parsed LLM output object</td>
+                </tr>
+                <tr>
+                    <td><code>expandedSections</code></td>
+                    <td><code>Record&lt;string, boolean&gt;</code></td>
+                    <td>Open/closed state for all 15 cards</td>
+                </tr>
+                <tr>
+                    <td><code>showGenDoc</code></td>
+                    <td><code>boolean</code></td>
+                    <td>Controls Academic Document modal visibility</td>
+                </tr>
+                <tr>
+                    <td><code>showChat</code></td>
+                    <td><code>boolean</code></td>
+                    <td>Controls Research Chatbot panel visibility</td>
+                </tr>
+                <tr>
+                    <td><code>chatMessages</code></td>
+                    <td><code>ChatMessage[]</code></td>
+                    <td>Full conversation history with AI assistant</td>
+                </tr>
+            </table>
+
+            <h3>Text Extraction API Call</h3>
+            <p>The file is sent as <code>multipart/form-data</code> to <code>POST /api/python/extract-text</code> — a
+                Next.js proxy route that forwards the request to the Python FastAPI backend at
+                <code>http://127.0.0.1:8000/extract-text</code>. This avoids CORS issues from the browser directly
+                calling the local Python server.</p>
+
+            <div class="callout warning">
+                <div class="callout-icon">⚠</div>
+                <div class="callout-body">
+                    <div class="callout-title">Text Length Validation</div>
+                    <p class="callout-text">If the extracted text is less than 100 characters, ALAMIX throws: <em>"The
+                            document seems to be empty or contains insufficient text for analysis."</em> Only the first
+                        50,000 characters are sent to the Groq API to stay within model limits.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══════ SECTION 3 ══════ -->
+        <div class="section pb">
+            <div class="section-header">
+                <div class="section-num">3</div>
+                <div>
+                    <div class="section-title">Stage 1 — Python Backend: Text Extraction</div>
+                    <div class="section-subtitle">fastapi_app.py · document_reader.py · Port 8000</div>
+                </div>
+            </div>
+            <div class="stage-pill yellow">🟡 Stage 1 · Python FastAPI · Port 8000</div>
+
+            <h3>POST /extract-text Endpoint</h3>
+            <p>Accepts a <code>multipart/form-data</code> upload. Validates file extension (<code>.pdf</code> or
+                <code>.docx</code> only). Reads the file bytes, calls <code>process_document(filename, content)</code>,
+                and applies whitespace normalisation before returning.</p>
+
+            <h3>Text Normalisation Pipeline</h3>
+            <p>After raw text is extracted, four regex operations clean it up:</p>
+            <table>
+                <tr>
+                    <th>Operation</th>
+                    <th>Regex / Method</th>
+                    <th>Purpose</th>
+                </tr>
+                <tr>
+                    <td>Hyphenation fix</td>
+                    <td><code>text.replace("-\n", "")</code></td>
+                    <td>Rejoin words split across lines in PDFs</td>
+                </tr>
+                <tr>
+                    <td>Non-breaking space</td>
+                    <td><code>text.replace("\xa0", " ")</code></td>
+                    <td>Convert &amp;nbsp; to regular spaces</td>
+                </tr>
+                <tr>
+                    <td>Tab/space collapse</td>
+                    <td><code>re.sub(r"[ \t]+", " ", text)</code></td>
+                    <td>Collapse runs of spaces/tabs to single space</td>
+                </tr>
+                <tr>
+                    <td>Paragraph normalise</td>
+                    <td><code>re.sub(r"\n\s*\n", "\n\n", text)</code></td>
+                    <td>Standardise paragraph breaks</td>
+                </tr>
+            </table>
+
+            <h3>Response Object from /extract-text</h3>
+            <pre>{
+  "filename": "paper.pdf",
+  "text": "Full extracted and normalised text...",
+  "word_count": 4821,
+  "extraction_method": "pdfplumber",
+  "warning": null          // null | "Text is very short." | "Text is very long."
+}</pre>
+
+            <p>Warning thresholds: <code>word_count &lt; 50</code> → "Text is very short." |
+                <code>word_count &gt; 3000</code> → "Text is very long." Neither warning blocks processing.</p>
+        </div>
+
+        <!-- ══════ SECTION 4 ══════ -->
+        <div class="section pb">
+            <div class="section-header">
+                <div class="section-num">4</div>
+                <div>
+                    <div class="section-title">Stage 2 — Groq LLM: Academic Intelligence Extraction</div>
+                    <div class="section-subtitle">extract/route.ts · LLaMA 3.3 70B · JSON Mode · Temperature 0</div>
+                </div>
+            </div>
+            <div class="stage-pill green">🟢 Stage 2 · Groq LLM · extract/route.ts</div>
+
+            <h3>API Parameters</h3>
+            <table>
+                <tr>
+                    <th>Parameter</th>
+                    <th>Value</th>
+                    <th>Reason</th>
+                </tr>
+                <tr>
+                    <td>model</td>
+                    <td><code>llama-3.3-70b-versatile</code></td>
+                    <td>Groq's highest-capability fast model</td>
+                </tr>
+                <tr>
+                    <td>temperature</td>
+                    <td><strong>0</strong></td>
+                    <td>Fully deterministic — no creative deviation, only extraction</td>
+                </tr>
+                <tr>
+                    <td>response_format</td>
+                    <td><code>{ type: "json_object" }</code></td>
+                    <td>Forces LLM to output valid JSON — no markdown prose</td>
+                </tr>
+                <tr>
+                    <td>Input limit</td>
+                    <td>25,000 chars</td>
+                    <td><code>text.substring(0, 25000)</code> — prevents context overflow</td>
+                </tr>
+            </table>
+
+            <div class="callout info">
+                <div class="callout-icon">💡</div>
+                <div class="callout-body">
+                    <div class="callout-title">Why Temperature 0?</div>
+                    <p class="callout-text">Unlike SENTIC (which needs creative variance), ALAMIX needs <strong>exact,
+                            reproducible extraction</strong>. Temperature 0 makes the LLM strictly deterministic — for
+                        the same input it always produces the same output. This is critical for academic integrity: you
+                        need the same paper to always extract the same research gap, not a slightly different one each
+                        run.</p>
+                </div>
+            </div>
+
+            <h3>System Prompt — 10 Extraction Directives</h3>
+            <p>The ALAMIX system prompt gives the LLM 10 sections to extract and 6 critical instructions:</p>
+
+            <div class="directive">
+                <div class="directive-title">Sections to Extract (10)</div>
+                <p>Abstract · Introduction · Literature Review · Aim &amp; Objectives · Research Gap · Methodology ·
+                    Results · Discussion · Conclusion · References</p>
+            </div>
+            <div class="directive">
+                <div class="directive-title">Directive 1 — Refine &amp; Reconstruct</div>
+                <p>If a section exists, refine and rewrite it clearly in academic prose. If missing, infer it logically
+                    from the paper's full content.</p>
+            </div>
+            <div class="directive">
+                <div class="directive-title">Directive 2 — Research Gap (Always Required)</div>
+                <p>Must always be generated, even if nowhere stated in the paper. Must identify: what has been studied,
+                    prior research limitations, what is missing, and why this specific study was necessary.</p>
+            </div>
+            <div class="directive">
+                <div class="directive-title">Directive 3 — No Fabrication</div>
+                <p>Do NOT fabricate data, invent results, or add research claims not present in the source text.
+                    Inference is allowed; invention is not.</p>
+            </div>
+            <div class="directive">
+                <div class="directive-title">Directive 4 — Preserve Technical Meaning</div>
+                <p>Maintain academic tone. Preserve all original technical terminology, metrics, and domain-specific
+                    vocabulary.</p>
+            </div>
+            <div class="directive">
+                <div class="directive-title">Directive 5 — Extract References Verbatim</div>
+                <p>References must be extracted exactly as written in the source — no reformatting, no truncation.</p>
+            </div>
+            <div class="directive">
+                <div class="directive-title">Directive 6 — Return Raw JSON Only</div>
+                <p>Output must start with <code>{</code> and end with <code>}</code>. No markdown code fences, no
+                    preamble, no labels outside the JSON object.</p>
+            </div>
+
+            <h3>JSON Cleaning &amp; Parsing</h3>
+            <p>Even with <code>response_format: json_object</code>, the LLM may sometimes wrap output in markdown
+                fences. The route handles this with a two-stage fallback:</p>
+            <pre>// Primary: strip ```json ... ``` markdown block
+const markdownMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
+if (markdownMatch) cleanJson = markdownMatch[1];
+
+// Fallback: find first { and last } in content
+else {
+  const firstBrace = content.indexOf('{');
+  const lastBrace  = content.lastIndexOf('}');
+  cleanJson = content.substring(firstBrace, lastBrace + 1);
+}
+
+// Then: JSON.parse(cleanJson) — throws if malformed</pre>
+        </div>
+
+        <!-- ══════ SECTION 5 ══════ -->
+        <div class="section pb">
+            <div class="section-header">
+                <div class="section-num">5</div>
+                <div>
+                    <div class="section-title">JSON Output Schema — Full 16-Field Structure</div>
+                    <div class="section-subtitle">AcademicResult interface · TypeScript type definition</div>
+                </div>
+            </div>
+
+            <p>The LLM always returns a single JSON object conforming to this schema. Every field is typed and consumed
+                directly by the React frontend:</p>
+
+            <pre>interface AcademicResult {
+  paperOverview: {
+    title:   string;   // Full paper title
+    authors: string;   // Author list as string
+    year:    string;   // Publication year
+    journal: string;   // Journal / conference name
+  };
+
+  abstract:         string;      // Full abstract text
+  introduction:     string;      // Section 2: Introduction prose
+  literatureReview: string;      // Section 3: Literature review
+
+  aim:              string[];    // Primary aims of the study (list)
+  objectives:       string[];    // Specific objectives (numbered list)
+
+  problemStatement: string;      // Core problem the paper addresses
+  researchGap:      string;      // Always generated — explicit or inferred
+
+  existingSystem:   string;      // Description of prior/competing systems
+  proposedSystem:   string;      // Proposed methodology / system architecture
+
+  methodology: {
+    dataset:    string;          // Datasets used
+    algorithms: string;          // Core algorithms applied
+    tools:      string;          // Tools / frameworks / platforms
+    metrics:    string;          // Evaluation metrics (accuracy, F1, etc)
+  };
+
+  results:     string;           // Key results and quantitative findings
+  discussion:  string;           // Interpretation of results, implications
+  conclusion:  string;           // Final conclusions of the paper
+
+  futureWork:  string[];         // List of suggested future directions
+  limitations: string;           // Study limitations
+
+  references:  string[];         // Exact reference strings from the document
+}</pre>
+
+            <div class="callout success">
+                <div class="callout-icon">📐</div>
+                <div class="callout-body">
+                    <div class="callout-title">Schema Total: 16 Top-Level Fields</div>
+                    <p class="callout-text">paperOverview (4 sub-fields) · abstract · introduction · literatureReview ·
+                        aim[] · objectives[] · problemStatement · researchGap · existingSystem · proposedSystem ·
+                        methodology (4 sub-fields) · results · discussion · conclusion · futureWork[] · limitations ·
+                        references[]</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══════ SECTION 6 ══════ -->
+        <div class="section pb">
+            <div class="section-header">
+                <div class="section-num">6</div>
+                <div>
+                    <div class="section-title">Output Layer — Intelligence Report UI</div>
+                    <div class="section-subtitle">12-column grid · Sticky sidebar · 15 expandable AcademicCards</div>
+                </div>
+            </div>
+
+            <h3>Layout Structure</h3>
+            <p>After successful extraction, ALAMIX renders a <strong>12-column responsive grid</strong> split into two
+                zones:</p>
+            <table>
+                <tr>
+                    <th>Zone</th>
+                    <th>Columns (lg)</th>
+                    <th>Content</th>
+                    <th>Behaviour</th>
+                </tr>
+                <tr>
+                    <td>Left Sidebar</td>
+                    <td>4 / 12</td>
+                    <td>Paper Overview + Methodology Context</td>
+                    <td>Sticky (stays on screen while scrolling right column)</td>
+                </tr>
+                <tr>
+                    <td>Main Content</td>
+                    <td>8 / 12</td>
+                    <td>All 13 remaining AcademicCards</td>
+                    <td>Scrollable, expandable individually</td>
+                </tr>
+            </table>
+
+            <h3>AcademicCard Component</h3>
+            <p>Every section is wrapped in an <code>AcademicCard</code> component — a glassmorphic collapsible card with
+                these features:</p>
+            <ul style="margin:8px 0 14px;padding-left:20px;color:#374151;font-size:9.5pt;line-height:1.9;">
+                <li>Click header to expand/collapse — state tracked in <code>expandedSections</code> record</li>
+                <li>Optional copy button (appears on Abstract and Aim) — copies content to clipboard</li>
+                <li>Smooth <code>AnimatePresence</code> height animation with custom cubic-bezier easing</li>
+                <li>Hover glow effect via <code>group-hover:opacity-100</code> blue blur layer</li>
+            </ul>
+
+            <h3>All 15 Output Sections (In Display Order)</h3>
+            <div class="output-grid">
+                <div class="output-card">
+                    <div class="onum">01</div>
+                    <div class="oname">Paper Overview</div>
+                    <div class="odesc">Title, Authors, Year, Publication — in sidebar (sticky)</div>
+                </div>
+                <div class="output-card">
+                    <div class="onum">02</div>
+                    <div class="oname">Methodology Context</div>
+                    <div class="odesc">Dataset, Algorithms, Tools, Metrics — in sidebar (sticky)</div>
+                </div>
+                <div class="output-card">
+                    <div class="onum">03</div>
+                    <div class="oname">Abstract</div>
+                    <div class="odesc">Full abstract · italic rendering · copy button</div>
+                </div>
+                <div class="output-card">
+                    <div class="onum">04</div>
+                    <div class="oname">Introduction</div>
+                    <div class="odesc">Full introduction prose</div>
+                </div>
+                <div class="output-card">
+                    <div class="onum">05</div>
+                    <div class="oname">Literature Review</div>
+                    <div class="odesc">Comprehensive lit review (whitespace-pre-line)</div>
+                </div>
+                <div class="output-card">
+                    <div class="onum">06</div>
+                    <div class="oname">Aim of Study</div>
+                    <div class="odesc">Bullet list of primary aims · copy button</div>
+                </div>
+                <div class="output-card">
+                    <div class="onum">07</div>
+                    <div class="oname">Specific Objectives</div>
+                    <div class="odesc">Numbered list with 0X prefix labels</div>
+                </div>
+                <div class="output-card">
+                    <div class="onum">08</div>
+                    <div class="oname">Problem Statement</div>
+                    <div class="odesc">Highlighted in blue tinted card</div>
+                </div>
+                <div class="output-card">
+                    <div class="onum">09</div>
+                    <div class="oname">Research Gap Analysis</div>
+                    <div class="odesc">AlertCircle icon + indigo text highlight</div>
+                </div>
+                <div class="output-card">
+                    <div class="onum">10</div>
+                    <div class="oname">Proposed System Architecture</div>
+                    <div class="odesc">Full methodology description</div>
+                </div>
+                <div class="output-card">
+                    <div class="onum">11</div>
+                    <div class="oname">Key Results &amp; Findings</div>
+                    <div class="odesc">Summary of quantitative + qualitative results</div>
+                </div>
+                <div class="output-card">
+                    <div class="onum">12</div>
+                    <div class="oname">Final Conclusion</div>
+                    <div class="odesc">Italic · bordered-left blue accent</div>
+                </div>
+                <div class="output-card">
+                    <div class="onum">13</div>
+                    <div class="oname">Discussion</div>
+                    <div class="odesc">Result interpretation and implications</div>
+                </div>
+                <div class="output-card">
+                    <div class="onum">14</div>
+                    <div class="oname">Expanded Future Scope</div>
+                    <div class="odesc">Sparkle-icon cards for each future direction</div>
+                </div>
+                <div class="output-card">
+                    <div class="onum">15</div>
+                    <div class="oname">Identified Limitations</div>
+                    <div class="odesc">Red AlertCircle icon + limitations text</div>
+                </div>
+            </div>
+            <p style="font-size:9pt;color:#6b7280;margin-top:4px;">References section rendered only if
+                <code>result.references</code> is non-empty.</p>
+        </div>
+
+        <!-- ══════ SECTION 7 ══════ -->
+        <div class="section pb">
+            <div class="section-header">
+                <div class="section-num">7</div>
+                <div>
+                    <div class="section-title">Research Chatbot — Context-Aware Q&amp;A</div>
+                    <div class="section-subtitle">Floating panel · Groq LLaMA · Paper-grounded responses</div>
+                </div>
+            </div>
+
+            <p>After an analysis is complete, a floating <strong>Research Assistant</strong> button appears
+                (bottom-right). Clicking it toggles a 400×600px glassmorphic chat panel anchored to the analysis result.
+            </p>
+
+            <h3>Chatbot API — POST /api/deoza/chat</h3>
+            <table>
+                <tr>
+                    <th>Parameter</th>
+                    <th>Value</th>
+                    <th>Purpose</th>
+                </tr>
+                <tr>
+                    <td>model</td>
+                    <td><code>llama-3.3-70b-versatile</code></td>
+                    <td>Same Groq model as extraction</td>
+                </tr>
+                <tr>
+                    <td>temperature</td>
+                    <td>0.6</td>
+                    <td>Slightly creative for natural conversation, still grounded</td>
+                </tr>
+                <tr>
+                    <td>max_tokens</td>
+                    <td>1024</td>
+                    <td>Limits response length for chat UX</td>
+                </tr>
+                <tr>
+                    <td>System context</td>
+                    <td>Paper title + abstract injected</td>
+                    <td>Grounds all responses to this specific paper</td>
+                </tr>
+            </table>
+
+            <h3>System Prompt Logic</h3>
+            <pre>You are DEOZA, an advanced AI Research Assistant helping a user understand a specific academic paper.
+
+Paper Context:
+Title: [paper title]
+Abstract: [paper abstract]
+
+Rules:
+- Always ground your answers in the paper context above
+- Be clear, academic, and concise
+- If the question goes beyond the abstract, say so and provide general insight
+- Do NOT hallucinate citations or data not in the abstract</pre>
+
+            <p>The full conversation history (<code>messages[]</code>) is sent with every API call, enabling multi-turn
+                context-aware dialogue. Users can ask questions like "What methodology was used?", "What are the
+                research gaps?", or "Who are the authors?" and receive paper-specific answers.</p>
+
+            <div class="callout info">
+                <div class="callout-icon">💬</div>
+                <div class="callout-body">
+                    <div class="callout-title">Keyword-Routing Fallback</div>
+                    <p class="callout-text">ALAMIX also implements a client-side keyword-routing fallback in
+                        <code>handleSendMessage()</code>. If the Groq call is unavailable, it pattern-matches keywords
+                        like "methodology", "aim", "future", "author" against the extracted result fields and returns a
+                        formatted local response. This ensures the chatbot always has something meaningful to say.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══════ SECTION 8 ══════ -->
+        <div class="section pb">
+            <div class="section-header">
+                <div class="section-num">8</div>
+                <div>
+                    <div class="section-title">Academic Document Generator &amp; PDF Export</div>
+                    <div class="section-subtitle">In-browser document preview · jsPDF export · 16-section formatted
+                        output</div>
+                </div>
+            </div>
+
+            <p>Clicking <strong>"Generate Academic Document"</strong> opens a full-screen modal that renders a
+                white-paper-style academic document preview directly in the browser — styled with Times New Roman and
+                academic formatting conventions.</p>
+
+            <h3>In-Browser Document Sections (16)</h3>
+            <p>The preview renders all 16 sections in academic paper format: Abstract · Introduction · Literature Review
+                · Aim · Objectives · Problem Statement · Research Gap · Existing System · Proposed System · Methodology
+                Details · Results &amp; Findings · Discussion · Conclusion · Future Scope · Limitations · References.
+            </p>
+
+            <h3>PDF Export via jsPDF</h3>
+            <p>The <code>downloadPDF()</code> function uses <code>jsPDF</code> to generate a programmatic PDF entirely
+                in the browser — no server involvement:</p>
+            <table>
+                <tr>
+                    <th>Parameter</th>
+                    <th>Value</th>
+                </tr>
+                <tr>
+                    <td>Page size</td>
+                    <td>A4 (210mm × 297mm)</td>
+                </tr>
+                <tr>
+                    <td>Font</td>
+                    <td>Times New Roman (bold for headings, normal for body)</td>
+                </tr>
+                <tr>
+                    <td>Margin</td>
+                    <td>20mm on all sides</td>
+                </tr>
+                <tr>
+                    <td>Font sizes</td>
+                    <td>18pt title · 14pt section h1 · 12pt section h2 · 11pt body</td>
+                </tr>
+                <tr>
+                    <td>Text alignment</td>
+                    <td>Justified (<code>align: "justify"</code>)</td>
+                </tr>
+                <tr>
+                    <td>Overflow handling</td>
+                    <td><code>addNewPageIfNeeded(h)</code> — adds new page if content exceeds y=280</td>
+                </tr>
+                <tr>
+                    <td>Bullet lists</td>
+                    <td>Rendered as " • item" with <code>splitTextToSize</code></td>
+                </tr>
+                <tr>
+                    <td>Filename</td>
+                    <td><code>{paper_title_first_20_chars}_Analysis.pdf</code></td>
+                </tr>
+            </table>
+
+            <div class="callout success">
+                <div class="callout-icon">📄</div>
+                <div class="callout-body">
+                    <div class="callout-title">History Integration</div>
+                    <p class="callout-text">After successful analysis,
+                        <code>addAlamixHistory(filename, paperTitle, authors)</code> is called to add the analysis to
+                        the Unified History Sidebar — allowing the user to quickly reload any previously processed paper
+                        without re-uploading.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══════ SECTION 9 ══════ -->
+        <div class="section pb">
+            <div class="section-header">
+                <div class="section-num">9</div>
+                <div>
+                    <div class="section-title">Complete Request Flow</div>
+                    <div class="section-subtitle">End-to-end walkthrough of a single paper analysis</div>
+                </div>
+            </div>
+
+            <ol class="flow-list">
+                <li><span>User selects or drags a PDF or DOCX file onto the upload zone.</span></li>
+                <li><span>Frontend validates file type (PDF/DOCX only). Non-research files are rejected
+                        immediately.</span></li>
+                <li><span><code>simulateUpload()</code> ticks the progress bar 0→100% in 500ms (50ms × 10 ticks).</span>
+                </li>
+                <li><span><code>startProcessing()</code> called. <code>isProcessing = true</code>. Step indicator shows
+                        Phase 1: "Analyzing document structure..."</span></li>
+                <li><span>File sent as <code>multipart/form-data</code> to
+                        <code>POST /api/python/extract-text</code>.</span></li>
+                <li><span>Next.js proxy forwards to Python FastAPI at
+                        <code>http://127.0.0.1:8000/extract-text</code>.</span></li>
+                <li><span>Python reads file bytes via <code>process_document()</code>. Extracts raw text using
+                        pdfplumber (PDF) or python-docx (DOCX).</span></li>
+                <li><span>Whitespace normalisation applied (hyphenation, non-breaking spaces, tab collapse, paragraph
+                        breaks).</span></li>
+                <li><span>Python returns <code>{ text, word_count, extraction_method, warning }</code> to Next.js proxy
+                        → frontend.</span></li>
+                <li><span>If text length &lt; 100 chars → error thrown. Otherwise, proceed to Step 11.</span></li>
+                <li><span>Step indicator advances to Phase 2: "Extracting academic components..."</span></li>
+                <li><span>Frontend sends <code>POST /api/alamix/extract</code> with
+                        <code>{ text: extractedText.substring(0, 50000) }</code>.</span></li>
+                <li><span>Next.js route calls Groq API with: model = <code>llama-3.3-70b-versatile</code>, temperature =
+                        0, response_format = json_object, input capped at 25,000 chars.</span></li>
+                <li><span>Step indicator advances to Phase 3: "Verifying content consistency..."</span></li>
+                <li><span>Groq returns raw JSON string. Route strips markdown fences (if any) and parses with
+                        <code>JSON.parse()</code>.</span></li>
+                <li><span><code>AcademicResult</code> object validated. Route returns it as HTTP JSON response.</span>
+                </li>
+                <li><span><code>setResult(academicData)</code> called. <code>isProcessing = false</code>.</span></li>
+                <li><span><code>addAlamixHistory()</code> saves to sidebar history.</span></li>
+                <li><span>Intelligence Report renders: 12-column grid, sticky sidebar, 15 expandable AcademicCards — all
+                        pre-expanded by default.</span></li>
+                <li><span>Floating Research Assistant button appears. User can now chat about the paper or generate and
+                        export the Academic Document PDF.</span></li>
+            </ol>
+        </div>
+
+        <!-- ══════ SECTION 10 ══════ -->
+        <div class="section">
+            <div class="section-header">
+                <div class="section-num">10</div>
+                <div>
+                    <div class="section-title">File Map &amp; Technology Summary</div>
+                    <div class="section-subtitle">Source files, dependencies, and tech stack</div>
+                </div>
+            </div>
+
+            <h3>Source Files</h3>
+            <div class="file-map">
+                <div class="file-card">
+                    <div class="fname">src/app/(dashboard)/alamix/page.tsx</div>
+                    <div class="frole">Full frontend — file upload, React state machine, processing steps, Intelligence
+                        Report layout, chatbot panel, PDF preview modal</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/app/api/alamix/extract/route.ts</div>
+                    <div class="frole">Stage 2 — Groq API call with temperature=0, json_object mode, 10-directive system
+                        prompt, JSON cleaning + parsing</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/app/api/deoza/chat/route.ts</div>
+                    <div class="frole">Research Chatbot — Groq call with paper context injected as system prompt, full
+                        message history forwarded, temperature=0.6</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">ai-humanizer/fastapi_app.py</div>
+                    <div class="frole">Stage 1 Python server — /extract-text endpoint, CORS, whitespace normalisation,
+                        word count, warning flags</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">ai-humanizer/document_reader.py</div>
+                    <div class="frole">PDF/DOCX parsing logic — pdfplumber/PyMuPDF for PDFs, python-docx for DOCX files
+                    </div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/components/UnifiedHistorySidebar.tsx</div>
+                    <div class="frole">History sidebar — addAlamixHistory() stores { filename, title, authors }.
+                        Clicking a history item reloads the analysis.</div>
+                </div>
+            </div>
+
+            <h3>Technology Stack</h3>
+            <table>
+                <tr>
+                    <th>Layer</th>
+                    <th>Technology</th>
+                    <th>Purpose</th>
+                </tr>
+                <tr>
+                    <td>Frontend Framework</td>
+                    <td>Next.js 14 (App Router)</td>
+                    <td>React client components, API route proxies</td>
+                </tr>
+                <tr>
+                    <td>UI Animation</td>
+                    <td>Framer Motion</td>
+                    <td>Card expand/collapse, page transitions, processing spinner</td>
+                </tr>
+                <tr>
+                    <td>PDF Client Export</td>
+                    <td>jsPDF</td>
+                    <td>In-browser A4 PDF generation from structured result</td>
+                </tr>
+                <tr>
+                    <td>Icons</td>
+                    <td>Lucide React</td>
+                    <td>All UI icons (Upload, AlertCircle, Sparkles, BookOpen, etc.)</td>
+                </tr>
+                <tr>
+                    <td>LLM Provider</td>
+                    <td>Groq Cloud API</td>
+                    <td>Fast LLaMA inference for both extraction and chatbot</td>
+                </tr>
+                <tr>
+                    <td>LLM Model</td>
+                    <td>llama-3.3-70b-versatile</td>
+                    <td>Stage 2 extraction (temp=0) + chatbot (temp=0.6)</td>
+                </tr>
+                <tr>
+                    <td>LLM Mode</td>
+                    <td>json_object response format</td>
+                    <td>Forces valid JSON output, eliminates markdown wrapping</td>
+                </tr>
+                <tr>
+                    <td>Backend Framework</td>
+                    <td>Python FastAPI + Uvicorn</td>
+                    <td>Stage 1 document text extraction server</td>
+                </tr>
+                <tr>
+                    <td>PDF Parsing</td>
+                    <td>pdfplumber / PyMuPDF</td>
+                    <td>Extracts text from PDF files in Python backend</td>
+                </tr>
+                <tr>
+                    <td>DOCX Parsing</td>
+                    <td>python-docx</td>
+                    <td>Extracts text from Word documents in Python backend</td>
+                </tr>
+                <tr>
+                    <td>API Key</td>
+                    <td><code>GROQ_API_KEY</code> env var</td>
+                    <td>Server-side only — never exposed to client</td>
+                </tr>
+            </table>
+
+            <div class="callout info">
+                <div class="callout-icon">🏗</div>
+                <div class="callout-body">
+                    <div class="callout-title">Architectural Summary</div>
+                    <p class="callout-text">ALAMIX is a <strong>2-stage AI pipeline</strong>: (1) Python extracts clean
+                        text from binary document formats, (2) Groq LLM reconstructs the full 16-field academic schema
+                        at temperature 0. The frontend is purely presentational — it receives a typed JSON object and
+                        renders it into a navigable Intelligence Report, a conversation interface, and an exportable PDF
+                        document.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <span>ALAMIX · ALTRIX Platform · Technical Architecture Document</span>
+            <span>Generated February 2026</span>
+        </div>
+
+    </div>
+</body>
+
+</html>

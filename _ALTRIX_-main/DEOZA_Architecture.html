@@ -1,0 +1,1559 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>DEOZA — Architecture & Technical Documentation</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+
+        :root {
+            --em: #059669;
+            --em2: #0d9488;
+            --blue: #2563eb;
+            --ind: #4f46e5;
+            --bg: #fff;
+            --text: #111827;
+            --muted: #6b7280;
+            --bdr: #e5e7eb;
+            --cbg: #f3f4f6;
+            --tbg: #ecfdf5;
+            --tbdr: #6ee7b7;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 10.5pt;
+            line-height: 1.7;
+        }
+
+        .page {
+            width: 210mm;
+            margin: 0 auto;
+            padding: 14mm 16mm;
+        }
+
+        .cover {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            border-bottom: 2px solid var(--bdr);
+            padding: 40px 0 60px;
+            page-break-after: always;
+        }
+
+        .cover-badge {
+            font-size: 8pt;
+            font-weight: 700;
+            letter-spacing: .35em;
+            text-transform: uppercase;
+            color: var(--em);
+            background: var(--tbg);
+            border: 1px solid var(--tbdr);
+            padding: 5px 16px;
+            border-radius: 999px;
+            margin-bottom: 28px;
+            display: inline-block;
+        }
+
+        .cover h1 {
+            font-size: 52pt;
+            font-weight: 800;
+            letter-spacing: .22em;
+            background: linear-gradient(135deg, #059669, #0d9488);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+            line-height: 1;
+        }
+
+        .cover-sub {
+            font-size: 13pt;
+            font-weight: 500;
+            letter-spacing: .18em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 36px;
+        }
+
+        .cover-tagline {
+            font-size: 10.5pt;
+            color: var(--muted);
+            font-weight: 300;
+            letter-spacing: .08em;
+            margin-bottom: 52px;
+        }
+
+        .cover-meta {
+            display: flex;
+            gap: 22px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .cover-meta span {
+            font-size: 8.5pt;
+            color: var(--muted);
+            font-weight: 500;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            padding: 6px 18px;
+            border: 1px solid var(--bdr);
+            border-radius: 8px;
+        }
+
+        .toc {
+            page-break-after: always;
+            padding-top: 20px;
+        }
+
+        .toc h2 {
+            font-size: 15pt;
+            font-weight: 700;
+            color: var(--em);
+            margin-bottom: 22px;
+        }
+
+        .toc-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 0;
+            border-bottom: 1px dotted var(--bdr);
+            font-size: 10pt;
+        }
+
+        .toc-num {
+            font-weight: 700;
+            color: var(--em);
+            min-width: 28px;
+            font-size: 9pt;
+        }
+
+        .toc-label {
+            flex: 1;
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        .section {
+            margin-bottom: 36px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 18px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--bdr);
+        }
+
+        .section-num {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--em), var(--em2));
+            color: #fff;
+            font-weight: 800;
+            font-size: 12pt;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .section-title {
+            font-size: 14pt;
+            font-weight: 700;
+        }
+
+        .section-subtitle {
+            font-size: 8.5pt;
+            color: var(--em);
+            font-weight: 600;
+            letter-spacing: .15em;
+            text-transform: uppercase;
+        }
+
+        h3 {
+            font-size: 11pt;
+            font-weight: 700;
+            margin: 20px 0 10px;
+            padding-left: 12px;
+            border-left: 3px solid #6ee7b7;
+        }
+
+        h4 {
+            font-size: 8.5pt;
+            font-weight: 600;
+            color: var(--em);
+            margin: 14px 0 7px;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+        }
+
+        p {
+            margin-bottom: 10px;
+            color: #374151;
+        }
+
+        .arch-diagram {
+            background: var(--tbg);
+            border: 1.5px solid var(--tbdr);
+            border-radius: 14px;
+            padding: 24px 28px;
+            margin: 16px 0 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8pt;
+            line-height: 1.9;
+            color: #374151;
+            white-space: pre;
+        }
+
+        pre {
+            background: var(--cbg);
+            border: 1px solid var(--bdr);
+            border-radius: 10px;
+            padding: 14px 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 7.8pt;
+            line-height: 1.65;
+            overflow: hidden;
+            margin: 12px 0 16px;
+            color: #1f2937;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8.5pt;
+            background: var(--cbg);
+            padding: 1px 5px;
+            border-radius: 4px;
+            color: var(--em);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0 18px;
+            font-size: 9.5pt;
+        }
+
+        th {
+            background: linear-gradient(135deg, var(--em), var(--em2));
+            color: #fff;
+            padding: 9px 14px;
+            text-align: left;
+            font-weight: 700;
+            font-size: 8.5pt;
+            letter-spacing: .05em;
+        }
+
+        th:first-child {
+            border-radius: 8px 0 0 0;
+        }
+
+        th:last-child {
+            border-radius: 0 8px 0 0;
+        }
+
+        td {
+            padding: 8px 14px;
+            border-bottom: 1px solid var(--bdr);
+            color: #374151;
+            vertical-align: top;
+        }
+
+        tr:nth-child(even) td {
+            background: #f9fafb;
+        }
+
+        td:first-child {
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .callout {
+            border-radius: 12px;
+            padding: 14px 18px;
+            margin: 14px 0;
+            display: flex;
+            gap: 13px;
+            align-items: flex-start;
+        }
+
+        .callout-icon {
+            font-size: 15pt;
+            line-height: 1;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .callout-body {
+            flex: 1;
+        }
+
+        .callout-title {
+            font-weight: 700;
+            font-size: 9.5pt;
+            margin-bottom: 4px;
+        }
+
+        .callout-text {
+            font-size: 9pt;
+            line-height: 1.6;
+            color: #374151;
+            margin: 0;
+        }
+
+        .callout.info {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+        }
+
+        .callout.info .callout-title {
+            color: var(--blue);
+        }
+
+        .callout.success {
+            background: var(--tbg);
+            border: 1px solid var(--tbdr);
+        }
+
+        .callout.success .callout-title {
+            color: var(--em);
+        }
+
+        .callout.warning {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+        }
+
+        .callout.warning .callout-title {
+            color: #d97706;
+        }
+
+        .callout.purple {
+            background: #f5f3ff;
+            border: 1px solid #ddd6fe;
+        }
+
+        .callout.purple .callout-title {
+            color: #7c3aed;
+        }
+
+        .stage-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 14px;
+            border-radius: 999px;
+            font-size: 8pt;
+            font-weight: 700;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .stage-pill.green {
+            background: var(--tbg);
+            color: var(--em);
+            border: 1px solid var(--tbdr);
+        }
+
+        .stage-pill.blue {
+            background: #eff6ff;
+            color: var(--blue);
+            border: 1px solid #bfdbfe;
+        }
+
+        .stage-pill.amber {
+            background: #fffbeb;
+            color: #d97706;
+            border: 1px solid #fde68a;
+        }
+
+        .stage-pill.purple {
+            background: #f5f3ff;
+            color: #7c3aed;
+            border: 1px solid #ddd6fe;
+        }
+
+        .flow-list {
+            counter-reset: flow;
+            list-style: none;
+            margin: 14px 0;
+            padding: 0;
+        }
+
+        .flow-list li {
+            counter-increment: flow;
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+            padding: 8px 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .flow-list li::before {
+            content: counter(flow);
+            min-width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--em), var(--em2));
+            color: #fff;
+            font-weight: 800;
+            font-size: 8pt;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .flow-list li span {
+            font-size: 9.5pt;
+            color: #374151;
+            line-height: 1.6;
+        }
+
+        .file-map {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 14px 0;
+        }
+
+        .file-card {
+            background: var(--tbg);
+            border: 1px solid var(--tbdr);
+            border-radius: 10px;
+            padding: 12px 14px;
+        }
+
+        .file-card .fname {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 7.5pt;
+            color: var(--em);
+            font-weight: 700;
+            margin-bottom: 5px;
+            word-break: break-all;
+        }
+
+        .file-card .frole {
+            font-size: 8.5pt;
+            color: #374151;
+            line-height: 1.5;
+        }
+
+        .directive {
+            background: #fff;
+            border: 1.5px solid var(--bdr);
+            border-left: 4px solid var(--tbdr);
+            border-radius: 0 10px 10px 0;
+            padding: 12px 16px;
+            margin: 11px 0;
+        }
+
+        .directive-title {
+            font-weight: 800;
+            font-size: 9pt;
+            color: var(--em);
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            margin-bottom: 5px;
+        }
+
+        .directive p {
+            margin: 0;
+            font-size: 9pt;
+            color: #374151;
+        }
+
+        .score-box {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin: 14px 0;
+        }
+
+        .score-card {
+            text-align: center;
+            padding: 14px;
+            border-radius: 12px;
+            border: 1.5px solid var(--bdr);
+        }
+
+        .score-card .slabel {
+            font-size: 8pt;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+
+        .score-card .sval {
+            font-size: 13pt;
+            font-weight: 800;
+            color: var(--em);
+        }
+
+        .score-card .sdesc {
+            font-size: 7.5pt;
+            color: var(--muted);
+            margin-top: 4px;
+            line-height: 1.4;
+        }
+
+        .pb {
+            page-break-before: always;
+            padding-top: 20px;
+        }
+
+        .footer {
+            margin-top: 40px;
+            padding-top: 14px;
+            border-top: 1px solid var(--bdr);
+            display: flex;
+            justify-content: space-between;
+            font-size: 7.5pt;
+            color: var(--muted);
+        }
+
+        @media print {
+            body {
+                font-size: 10pt;
+            }
+
+            .page {
+                padding: 10mm 14mm;
+            }
+
+            .cover {
+                min-height: auto;
+                padding: 30px 0 40px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page">
+
+        <!-- ══ COVER ══ -->
+        <div class="cover">
+            <div class="cover-badge">Technical Architecture Document</div>
+            <h1>DEOZA</h1>
+            <div class="cover-sub">Research Intelligence Platform</div>
+            <div class="cover-tagline">Search · Analyze · Chat · Save · Understand</div>
+            <div class="cover-meta">
+                <span>ALTRIX Platform</span>
+                <span>Dual-Source Search</span>
+                <span>Semantic Scholar + arXiv</span>
+                <span>4 Groq AI Endpoints</span>
+                <span>February 2026</span>
+            </div>
+        </div>
+
+        <!-- ══ TOC ══ -->
+        <div class="toc">
+            <h2>Table of Contents</h2>
+            <div class="toc-item"><span class="toc-num">01</span><span class="toc-label">System Overview &amp;
+                    High-Level Architecture</span></div>
+            <div class="toc-item"><span class="toc-num">02</span><span class="toc-label">Stage 1 — Dual-Source Academic
+                    Search Engine</span></div>
+            <div class="toc-item"><span class="toc-num">03</span><span class="toc-label">Smart Ranking Algorithm</span>
+            </div>
+            <div class="toc-item"><span class="toc-num">04</span><span class="toc-label">Filter System &amp; Search
+                    State (Zustand Store)</span></div>
+            <div class="toc-item"><span class="toc-num">05</span><span class="toc-label">Stage 2 — Field Intelligence
+                    Briefing (AI Insight)</span></div>
+            <div class="toc-item"><span class="toc-num">06</span><span class="toc-label">Stage 3 — AI Paper Summarizer
+                    (7-Point Analysis)</span></div>
+            <div class="toc-item"><span class="toc-num">07</span><span class="toc-label">Stage 4 — Paper Q&amp;A Chatbot
+                    (Context-Grounded)</span></div>
+            <div class="toc-item"><span class="toc-num">08</span><span class="toc-label">PaperCard Component &amp; Paper
+                    Detail Page</span></div>
+            <div class="toc-item"><span class="toc-num">09</span><span class="toc-label">Personal Library &amp;
+                    History</span></div>
+            <div class="toc-item"><span class="toc-num">10</span><span class="toc-label">Complete Request Flow</span>
+            </div>
+            <div class="toc-item"><span class="toc-num">11</span><span class="toc-label">All 4 Groq Parameters
+                    Compared</span></div>
+            <div class="toc-item"><span class="toc-num">12</span><span class="toc-label">File Map &amp; Technology
+                    Summary</span></div>
+        </div>
+
+        <!-- ══ SECTION 1 ══ -->
+        <div class="section pb">
+            <div class="section-header">
+                <div class="section-num">1</div>
+                <div>
+                    <div class="section-title">System Overview &amp; High-Level Architecture</div>
+                    <div class="section-subtitle">What DEOZA is and how its 4 AI stages connect</div>
+                </div>
+            </div>
+
+            <p>DEOZA is the <strong>Research Intelligence Platform</strong> in ALTRIX. It lets users search millions of
+                academic papers from two live academic databases simultaneously, then activates four distinct AI
+                capabilities on those papers: a field-level intelligence briefing, a structured 7-point paper analysis,
+                a context-grounded Q&amp;A chatbot, and a personal library with search history. Every AI feature is
+                powered by Groq's LLaMA 3.3 70B with different temperature settings tuned to each task's nature.</p>
+
+            <div class="arch-diagram">USER QUERY (text input)
+                │
+                ▼
+                ┌────────────────────────────────────────────────┐
+                │ DEOZA Homepage (Next.js) │ /deoza/page.tsx
+                │ · SearchBar (hero size) │
+                │ · Quick topic chips (6 preset queries) │
+                │ · Library shortcut (if saved papers > 0) │
+                └───────────────────┬────────────────────────────┘
+                │ router.push("/deoza/search?q=...")
+                ▼
+                ┌────────────────────────────────────────────────┐
+                │ Search Results Page │ /deoza/search/page.tsx
+                │ · FilterPanel (sticky sidebar) │
+                │ · FieldInsightPanel → /api/deoza/insight │
+                │ · PaperCard grid (up to 30 results) │
+                └──────┬──────────────────┬──────────────────────┘
+                │ parallel │
+                ▼ ▼
+                ┌──────────────┐ ┌───────────────────────────────┐
+                │ Semantic │ │ arXiv Atom/XML API │
+                │ Scholar API │ │ export.arxiv.org/api/query │
+                │ (up to 15) │ │ (up to 15 · title+all fields) │
+                └──────┬───────┘ └──────────────┬────────────────┘
+                └────── merge + rank ──────┘
+                │
+                ▼
+                ┌─────────────────────────┐
+                │ /api/deoza/search │ Smart ranking + filter
+                └─────────────────────────┘
+                │
+                Click "AI Summary" on PaperCard
+                ▼
+                ┌────────────────────────────────────────────────┐
+                │ Paper Detail Page /deoza/paper/[id] │
+                │ · AISummaryPanel → /api/deoza/summarize │
+                │ · ChatPanel → /api/deoza/chat │
+                └────────────────────────────────────────────────┘</div>
+
+            <div class="callout success">
+                <div class="callout-icon">🎯</div>
+                <div class="callout-body">
+                    <div class="callout-title">Core Design Principle</div>
+                    <p class="callout-text">Every Groq endpoint in DEOZA has a <strong>different temperature</strong>
+                        tuned to its task: 0.5 for Field Intelligence (focused but slightly exploratory), 0.4 for Paper
+                        Summarization (structured + grounded), 0.6 for Chat (natural conversation). They all share the
+                        same model (<code>llama-3.3-70b-versatile</code>) but behave completely differently because of
+                        this tuning.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ SECTION 2 ══ -->
+        <div class="section pb">
+            <div class="section-header">
+                <div class="section-num">2</div>
+                <div>
+                    <div class="section-title">Stage 1 — Dual-Source Academic Search Engine</div>
+                    <div class="section-subtitle">search/route.ts · Semantic Scholar + arXiv · Parallel fetch</div>
+                </div>
+            </div>
+            <div class="stage-pill green">🟢 Stage 1 · POST /api/deoza/search</div>
+
+            <p>DEOZA queries <strong>two completely independent academic databases simultaneously</strong> using
+                <code>Promise.all()</code> and merges the results. This gives up to 30 candidate papers (15 from each
+                source) before filtering and ranking.</p>
+
+            <h3>Source 1 — Semantic Scholar API</h3>
+            <p>Endpoint: <code>https://api.semanticscholar.org/graph/v1/paper/search</code></p>
+            <table>
+                <tr>
+                    <th>Parameter</th>
+                    <th>Value</th>
+                    <th>Purpose</th>
+                </tr>
+                <tr>
+                    <td>query</td>
+                    <td>User's search string</td>
+                    <td>Full-text relevance search</td>
+                </tr>
+                <tr>
+                    <td>limit</td>
+                    <td>15</td>
+                    <td>Max papers per fetch</td>
+                </tr>
+                <tr>
+                    <td>fields</td>
+                    <td>title, authors, year, abstract, citationCount, url, venue, fieldsOfStudy, openAccessPdf</td>
+                    <td>All metadata needed for UI + ranking</td>
+                </tr>
+                <tr>
+                    <td>x-api-key</td>
+                    <td><code>SEMANTIC_SCHOLAR_API_KEY</code> (optional)</td>
+                    <td>Higher rate limits when key provided</td>
+                </tr>
+                <tr>
+                    <td>timeout</td>
+                    <td>8 seconds (<code>AbortSignal.timeout(8000)</code>)</td>
+                    <td>Prevents hanging if API is slow</td>
+                </tr>
+            </table>
+            <p>Returns: title, authors[], year, abstract, citationCount, openAccessPdf.url, fieldsOfStudy[0], venue.
+                Papers from this source get source badge: <strong>Semantic</strong> (purple).</p>
+
+            <h3>Source 2 — arXiv Atom/XML API</h3>
+            <p>Endpoint: <code>http://export.arxiv.org/api/query</code></p>
+            <table>
+                <tr>
+                    <th>Parameter</th>
+                    <th>Value</th>
+                    <th>Purpose</th>
+                </tr>
+                <tr>
+                    <td>search_query</td>
+                    <td><code>ti:{q}+OR+all:{q}</code></td>
+                    <td>Searches title field AND all fields together</td>
+                </tr>
+                <tr>
+                    <td>start</td>
+                    <td>0</td>
+                    <td>Pagination offset</td>
+                </tr>
+                <tr>
+                    <td>max_results</td>
+                    <td>15</td>
+                    <td>Max papers</td>
+                </tr>
+                <tr>
+                    <td>sortBy</td>
+                    <td>relevance</td>
+                    <td>Rank by relevance, not date</td>
+                </tr>
+                <tr>
+                    <td>timeout</td>
+                    <td>8 seconds</td>
+                    <td>Abort signal same as Semantic Scholar</td>
+                </tr>
+            </table>
+            <p>Returns Atom XML. DEOZA parses it with regex
+                (<code>.match(/&lt;entry&gt;([\s\S]*?)&lt;\/entry&gt;/g)</code>) — no XML library needed. Extracts:
+                title, summary (abstract), published year, author names, arXiv ID. Builds PDF link as
+                <code>https://arxiv.org/pdf/{id}</code>. All arXiv papers are always <code>openAccess: true</code>.
+                Source badge: <strong>arXiv</strong> (emerald).</p>
+
+            <h3>UnifiedPaper Interface</h3>
+            <p>Both sources are normalised into a single shared type:</p>
+            <pre>interface UnifiedPaper {
+  id:          string;              // "semantic-{paperId}" | "arxiv-{arxivId}"
+  source:      "semantic" | "arxiv";
+  title:       string;
+  authors:     string[];
+  year:        number | null;
+  abstract:    string;
+  citations:   number | null;       // null for arXiv (not tracked)
+  pdf:         string | null;       // Direct PDF download URL
+  url:         string;              // Paper detail page URL
+  field:       string | null;       // fieldsOfStudy[0] from Semantic Scholar
+  openAccess:  boolean;             // Always true for arXiv
+}</pre>
+        </div>
+
+        <!-- ══ SECTION 3 ══ -->
+        <div class="section pb">
+            <div class="section-header">
+                <div class="section-num">3</div>
+                <div>
+                    <div class="section-title">Smart Ranking Algorithm</div>
+                    <div class="section-subtitle">scoreResult() · Keyword coverage + citation weight + recency</div>
+                </div>
+            </div>
+
+            <p>After merging up to 30 candidates, DEOZA ranks them using a composite scoring formula — not just
+                relevance from the source API, but a custom multi-signal score:</p>
+            <pre>function scoreResult(paper: UnifiedPaper, query: string): number {
+  const titleNorm  = normalize(paper.title);   // lowercase, strip punctuation
+  const queryNorm  = normalize(query);
+  const queryWords = queryNorm.split(/\s+/);
+
+  // Tier 1: Exact full title match → massive boost
+  if (titleNorm === queryNorm) return 10000;
+
+  // Tier 2: Title contains the entire query as substring → big boost
+  if (titleNorm.includes(queryNorm)) return 5000;
+
+  // Tier 3: Word-by-word coverage score (0–100)
+  const matchedWords  = queryWords.filter(w => titleNorm.includes(w));
+  const wordCoverage  = matchedWords.length / queryWords.length;
+  const keywordScore  = wordCoverage * 100;
+
+  // Citation bonus: capped at 20 (1 point per 100 citations)
+  const citationScore = paper.citations ? Math.min(paper.citations / 100, 20) : 0;
+
+  // Recency bonus: 0.5 points per year after 2010
+  const recencyScore  = paper.year ? Math.max(0, (paper.year - 2010) / 2) : 0;
+
+  return keywordScore + citationScore + recencyScore;
+}</pre>
+
+            <div class="score-box">
+                <div class="score-card">
+                    <div class="slabel">Exact Match</div>
+                    <div class="sval">10,000</div>
+                    <div class="sdesc">Title equals query exactly</div>
+                </div>
+                <div class="score-card">
+                    <div class="slabel">Contains Query</div>
+                    <div class="sval">5,000</div>
+                    <div class="sdesc">Title includes full query string</div>
+                </div>
+                <div class="score-card">
+                    <div class="slabel">Word Coverage</div>
+                    <div class="sval">0–100</div>
+                    <div class="sdesc">% of query words in title</div>
+                </div>
+                <div class="score-card">
+                    <div class="slabel">Citation Bonus</div>
+                    <div class="sval">0–20</div>
+                    <div class="sdesc">1pt per 100 citations (cap 20)</div>
+                </div>
+                <div class="score-card">
+                    <div class="slabel">Recency Bonus</div>
+                    <div class="sval">0–7</div>
+                    <div class="sdesc">0.5pt per year after 2010</div>
+                </div>
+                <div class="score-card">
+                    <div class="slabel">arXiv Citation</div>
+                    <div class="sval">null</div>
+                    <div class="sdesc">arXiv has no citation data</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ SECTION 4 ══ -->
+        <div class="section pb">
+            <div class="section-header">
+                <div class="section-num">4</div>
+                <div>
+                    <div class="section-title">Filter System &amp; Search State (Zustand Store)</div>
+                    <div class="section-subtitle">FilterPanel · useDeozaStore · Persistent global state</div>
+                </div>
+            </div>
+
+            <h3>Active Filters (Applied Server-Side in route.ts)</h3>
+            <table>
+                <tr>
+                    <th>Filter</th>
+                    <th>Type</th>
+                    <th>Logic Applied</th>
+                </tr>
+                <tr>
+                    <td>source</td>
+                    <td>"all" | "semantic" | "arxiv"</td>
+                    <td><code>paper.source === filters.source</code></td>
+                </tr>
+                <tr>
+                    <td>openAccessOnly</td>
+                    <td>boolean</td>
+                    <td><code>paper.openAccess === true</code></td>
+                </tr>
+                <tr>
+                    <td>yearFrom</td>
+                    <td>number</td>
+                    <td><code>paper.year &gt;= filters.yearFrom</code></td>
+                </tr>
+                <tr>
+                    <td>yearTo</td>
+                    <td>number</td>
+                    <td><code>paper.year &lt;= filters.yearTo</code></td>
+                </tr>
+                <tr>
+                    <td>minCitations</td>
+                    <td>number</td>
+                    <td><code>paper.citations &gt;= filters.minCitations</code></td>
+                </tr>
+            </table>
+            <p>Filters are applied to the merged+ranked candidate list <em>before</em> returning to the client. When
+                filters change in the UI (<code>FilterPanel</code>), the search page auto-reruns the API call via a
+                <code>useEffect</code> dependency on <code>filters</code>.</p>
+
+            <h3>Zustand Store — <code>useDeozaStore</code></h3>
+            <p>All DEOZA state lives in a Zustand store (<code>lib/deoza-store.ts</code>), shared across all pages
+                without prop drilling:</p>
+            <table>
+                <tr>
+                    <th>State</th>
+                    <th>Type</th>
+                    <th>Purpose</th>
+                </tr>
+                <tr>
+                    <td>searchQuery</td>
+                    <td>string</td>
+                    <td>Current active query string</td>
+                </tr>
+                <tr>
+                    <td>searchResults</td>
+                    <td>UnifiedPaper[]</td>
+                    <td>Current displayed results list</td>
+                </tr>
+                <tr>
+                    <td>isSearching</td>
+                    <td>boolean</td>
+                    <td>Loading spinner state</td>
+                </tr>
+                <tr>
+                    <td>filters</td>
+                    <td>FilterState</td>
+                    <td>All 5 active filter values</td>
+                </tr>
+                <tr>
+                    <td>savedPapers</td>
+                    <td>UnifiedPaper[]</td>
+                    <td>Personal library (persisted to localStorage)</td>
+                </tr>
+            </table>
+            <p>Actions: <code>setSearchResults()</code>, <code>setIsSearching()</code>, <code>setSearchQuery()</code>,
+                <code>addPaper()</code>, <code>removePaper()</code>, <code>isSaved(id)</code>.</p>
+        </div>
+
+        <!-- ══ SECTION 5 ══ -->
+        <div class="section pb">
+            <div class="section-header">
+                <div class="section-num">5</div>
+                <div>
+                    <div class="section-title">Stage 2 — Field Intelligence Briefing</div>
+                    <div class="section-subtitle">FieldInsightPanel · /api/deoza/insight · Temperature 0.5</div>
+                </div>
+            </div>
+            <div class="stage-pill amber">🟡 Stage 2 · FieldInsightPanel · POST /api/deoza/insight</div>
+
+            <p>At the top of every search results page sits the <strong>FieldInsightPanel</strong> — a collapsible panel
+                that generates a domain-level AI briefing for the user's search query. It answers: "What is this field
+                about as a whole?" before the user dives into individual papers.</p>
+
+            <h3>Groq API Parameters</h3>
+            <table>
+                <tr>
+                    <th>Parameter</th>
+                    <th>Value</th>
+                    <th>Reason</th>
+                </tr>
+                <tr>
+                    <td>model</td>
+                    <td><code>llama-3.3-70b-versatile</code></td>
+                    <td>Groq fast model</td>
+                </tr>
+                <tr>
+                    <td>temperature</td>
+                    <td><strong>0.5</strong></td>
+                    <td>Balanced: academically accurate but not rigidly dry</td>
+                </tr>
+                <tr>
+                    <td>max_tokens</td>
+                    <td>600</td>
+                    <td>Caps output at ~300 words as instructed</td>
+                </tr>
+                <tr>
+                    <td>messages</td>
+                    <td>Single user message (no system prompt)</td>
+                    <td>Prompt contains all context inline</td>
+                </tr>
+            </table>
+
+            <h3>Prompt Structure</h3>
+            <pre>You are DEOZA, a research intelligence assistant.
+A user searched for: "{query}"
+
+Generate a concise field intelligence briefing with these sections:
+1. Field Overview (3-4 lines about this research domain)
+2. Emerging Trends (3 bullet points)
+3. Dominant Methodologies (2-3 bullet points)
+4. Key Research Gaps (2-3 bullet points)
+
+Keep it crisp, academic, and under 300 words total.</pre>
+
+            <h3>FieldInsightPanel Behaviour</h3>
+            <ul style="padding-left:18px;margin:8px 0 14px;color:#374151;font-size:9.5pt;line-height:1.9;">
+                <li>Only fetches when user <strong>clicks to expand</strong> — lazy-loaded, not auto-fetched on page
+                    load</li>
+                <li>Once fetched for a query, the result is <strong>cached in component state</strong> — subsequent
+                    expand/collapse is instant</li>
+                <li>When query changes, <code>fetched</code> flag resets — forcing a fresh API call for the new query
+                </li>
+                <li>Counter shows <strong>"Generate"</strong> badge before first fetch; hides after</li>
+            </ul>
+        </div>
+
+        <!-- ══ SECTION 6 ══ -->
+        <div class="section pb">
+            <div class="section-header">
+                <div class="section-num">6</div>
+                <div>
+                    <div class="section-title">Stage 3 — AI Paper Summarizer</div>
+                    <div class="section-subtitle">AISummaryPanel · /api/deoza/summarize · Temperature 0.4 · 7-Point
+                        Analysis</div>
+                </div>
+            </div>
+            <div class="stage-pill green">🟢 Stage 3 · AISummaryPanel · POST /api/deoza/summarize</div>
+
+            <p>Available on the Paper Detail page (<code>/deoza/paper/[id]</code>). On clicking "AI Summary" from a
+                PaperCard, the user is navigated to the detail page with the full paper data encoded in URL search
+                params as JSON. The AISummaryPanel then generates a structured 7-section analysis on demand.</p>
+
+            <h3>Groq API Parameters</h3>
+            <table>
+                <tr>
+                    <th>Parameter</th>
+                    <th>Value</th>
+                    <th>Reason</th>
+                </tr>
+                <tr>
+                    <td>model</td>
+                    <td><code>llama-3.3-70b-versatile</code></td>
+                    <td>Groq fast model</td>
+                </tr>
+                <tr>
+                    <td>temperature</td>
+                    <td><strong>0.4</strong></td>
+                    <td>Low: structured output, academically grounded</td>
+                </tr>
+                <tr>
+                    <td>max_tokens</td>
+                    <td>Default (not capped)</td>
+                    <td>Full 7-section analysis allowed to use full capacity</td>
+                </tr>
+                <tr>
+                    <td>System prompt</td>
+                    <td>DEOZA academic assistant persona</td>
+                    <td>Sets behavioural guardrails</td>
+                </tr>
+            </table>
+
+            <h3>System Prompt Directives</h3>
+            <div class="directive">
+                <div class="directive-title">DEOZA Summarizer Identity</div>
+                <p>You are DEOZA, an advanced AI Research Assistant. You must: provide accurate structured summaries ·
+                    avoid hallucinating citations · base analysis only on provided abstract/content · extract
+                    methodology and key contributions · identify research gaps · explain complex ideas clearly ·
+                    maintain academic tone.</p>
+            </div>
+
+            <h3>7-Point Output Structure</h3>
+            <p>The user prompt instructs the model to produce exactly 7 numbered sections:</p>
+            <table>
+                <tr>
+                    <th>#</th>
+                    <th>Section</th>
+                    <th>Content Expected</th>
+                </tr>
+                <tr>
+                    <td>1</td>
+                    <td>Short Summary</td>
+                    <td>5–7 lines plain-language overview</td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td>Core Contribution</td>
+                    <td>The main novel claim or improvement</td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td>Methodology Used</td>
+                    <td>Techniques, algorithms, approach</td>
+                </tr>
+                <tr>
+                    <td>4</td>
+                    <td>Strengths</td>
+                    <td>What the paper does well</td>
+                </tr>
+                <tr>
+                    <td>5</td>
+                    <td>Limitations</td>
+                    <td>What the paper misses or leaves open</td>
+                </tr>
+                <tr>
+                    <td>6</td>
+                    <td>Possible Research Gaps</td>
+                    <td>Opportunities beyond this work</td>
+                </tr>
+                <tr>
+                    <td>7</td>
+                    <td>Suggested Future Work</td>
+                    <td>Concrete next-step recommendations</td>
+                </tr>
+            </table>
+
+            <h3>AISummaryPanel Behaviour</h3>
+            <ul style="padding-left:18px;margin:8px 0 14px;color:#374151;font-size:9.5pt;line-height:1.9;">
+                <li>Lazy-load: only calls API when user expands the panel</li>
+                <li>Result cached in state — re-expanding after first close is instant</li>
+                <li><code>formatAnalysis()</code> splits the text by <code>/\n(?=\d+\.)/</code> into numbered section
+                    blocks</li>
+                <li>Each section rendered with a heading (emerald) + body text (gray), separated by a left border</li>
+            </ul>
+        </div>
+
+        <!-- ══ SECTION 7 ══ -->
+        <div class="section pb">
+            <div class="section-header">
+                <div class="section-num">7</div>
+                <div>
+                    <div class="section-title">Stage 4 — Paper Q&amp;A Chatbot</div>
+                    <div class="section-subtitle">ChatPanel · /api/deoza/chat · Temperature 0.6 · Multi-turn Context
+                    </div>
+                </div>
+            </div>
+            <div class="stage-pill blue">🔵 Stage 4 · ChatPanel · POST /api/deoza/chat</div>
+
+            <p>On the Paper Detail page, a <strong>ChatPanel</strong> sits below the summary. The user can ask any
+                question about the paper and get grounded, context-aware answers from the LLM. The paper's title and
+                abstract are injected as context into every API call.</p>
+
+            <h3>Groq API Parameters</h3>
+            <table>
+                <tr>
+                    <th>Parameter</th>
+                    <th>Value</th>
+                    <th>Reason</th>
+                </tr>
+                <tr>
+                    <td>model</td>
+                    <td><code>llama-3.3-70b-versatile</code></td>
+                    <td>Groq fast model</td>
+                </tr>
+                <tr>
+                    <td>temperature</td>
+                    <td><strong>0.6</strong></td>
+                    <td>Natural conversational tone while staying grounded</td>
+                </tr>
+                <tr>
+                    <td>max_tokens</td>
+                    <td>1024</td>
+                    <td>Appropriate for chat responses — not too long</td>
+                </tr>
+                <tr>
+                    <td>messages</td>
+                    <td>System prompt + full history[]</td>
+                    <td>Multi-turn — all previous messages forwarded</td>
+                </tr>
+            </table>
+
+            <h3>System Prompt (Injected Per Paper)</h3>
+            <pre>You are DEOZA, an advanced AI Research Assistant helping a user understand a specific academic paper.
+
+Paper Context:
+Title: {paper.title}
+Abstract: {paper.abstract}
+
+Rules:
+- Always ground your answers in the paper context above
+- Be clear, academic, and concise
+- If the question goes beyond the abstract, say so and provide general insight
+- Do NOT hallucinate citations or data not in the abstract</pre>
+
+            <p>The full <code>messages[]</code> array (all prior turns) is serialised and sent with every new request —
+                enabling fully contextual multi-turn conversation. The UI distinguishes user and assistant messages with
+                different bubble styles (blue right-aligned vs dark left-aligned).</p>
+
+            <h3>Quick Question Chips</h3>
+            <p>The ChatPanel renders pre-built question buttons from a <code>QUICK_QUESTIONS[]</code> array. Clicking
+                one auto-populates the input and submits immediately. Examples: "What is the main methodology?", "What
+                are the limitations?", "Suggest follow-up research".</p>
+        </div>
+
+        <!-- ══ SECTION 8 ══ -->
+        <div class="section pb">
+            <div class="section-header">
+                <div class="section-num">8</div>
+                <div>
+                    <div class="section-title">PaperCard Component &amp; Paper Detail Page</div>
+                    <div class="section-subtitle">PaperCard.tsx · /deoza/paper/[id] · Data passed via URL params</div>
+                </div>
+            </div>
+
+            <h3>PaperCard Component</h3>
+            <p>Each search result renders as a <code>PaperCard</code> — a glassmorphic card with Framer Motion entrance
+                animation (<code>delay: index * 0.04</code>) and hover lift (<code>y: -3</code>). Every card displays:
+            </p>
+            <table>
+                <tr>
+                    <th>Element</th>
+                    <th>Data Source</th>
+                    <th>Behaviour</th>
+                </tr>
+                <tr>
+                    <td>Source badge</td>
+                    <td><code>paper.source</code></td>
+                    <td>Purple "Semantic" or Emerald "arXiv"</td>
+                </tr>
+                <tr>
+                    <td>Open Access badge</td>
+                    <td><code>paper.openAccess</code></td>
+                    <td>Green "Open" pill if PDF is freely available</td>
+                </tr>
+                <tr>
+                    <td>Title</td>
+                    <td><code>paper.title</code></td>
+                    <td>Max 2 lines (line-clamp-2), hover turns emerald</td>
+                </tr>
+                <tr>
+                    <td>Authors</td>
+                    <td><code>paper.authors</code></td>
+                    <td>First 3 shown + "et al." if more</td>
+                </tr>
+                <tr>
+                    <td>Year + Citations + Field</td>
+                    <td>Meta fields</td>
+                    <td>Inline pills — citations shown in amber</td>
+                </tr>
+                <tr>
+                    <td>Abstract preview</td>
+                    <td><code>paper.abstract</code></td>
+                    <td>Max 3 lines (line-clamp-3)</td>
+                </tr>
+                <tr>
+                    <td>AI Summary button</td>
+                    <td>–</td>
+                    <td>Navigates to detail page with full paper JSON in URL</td>
+                </tr>
+                <tr>
+                    <td>View PDF button</td>
+                    <td><code>paper.pdf</code></td>
+                    <td>Direct link — only shown if PDF exists</td>
+                </tr>
+                <tr>
+                    <td>Save to Library</td>
+                    <td><code>isSaved(paper.id)</code></td>
+                    <td>Toggle save/unsave via Zustand store</td>
+                </tr>
+            </table>
+
+            <h3>Paper Detail Page — Data Passing</h3>
+            <p>No database fetch needed on the detail page. When clicking "AI Summary", the full
+                <code>UnifiedPaper</code> object is JSON-encoded into a URL search parameter:</p>
+            <pre>const params = new URLSearchParams({
+  id:   paper.id,
+  data: JSON.stringify(paper),   // Full paper object encoded in URL
+});
+router.push(`/deoza/paper/${encodeURIComponent(paper.id)}?${params}`);
+// Detail page reads: const paper = JSON.parse(searchParams.get("data"));</pre>
+        </div>
+
+        <!-- ══ SECTION 9 ══ -->
+        <div class="section pb">
+            <div class="section-header">
+                <div class="section-num">9</div>
+                <div>
+                    <div class="section-title">Personal Library &amp; History</div>
+                    <div class="section-subtitle">Zustand savedPapers · addDeozaHistory · UnifiedHistorySidebar</div>
+                </div>
+            </div>
+
+            <h3>Personal Paper Library</h3>
+            <p>Any paper can be bookmarked with the save button on its PaperCard. Saved papers are stored in the Zustand
+                store's <code>savedPapers[]</code> array, persisted to <code>localStorage</code>. The Library page
+                (<code>/deoza/library</code>) shows all saved papers with remove buttons. A library shortcut pill
+                appears on the main DEOZA homepage and the search header when <code>savedPapers.length &gt; 0</code>.
+            </p>
+
+            <h3>Search History</h3>
+            <p>After every successful search that returns results, <code>addDeozaHistory(query, resultCount)</code> is
+                called — saving the query string and result count to the Unified History Sidebar. The sidebar appears on
+                the search results page, letting users instantly re-run previous searches.</p>
+
+            <div class="callout info">
+                <div class="callout-icon">📚</div>
+                <div class="callout-body">
+                    <div class="callout-title">UnifiedHistorySidebar Integration</div>
+                    <p class="callout-text">DEOZA shares the same history sidebar component as SENTIC and ALAMIX. It
+                        renders as a collapsible panel on the left of the search page. Each history item shows the
+                        query, the result count, and timestamp. Clicking re-triggers the search.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ SECTION 10 ══ -->
+        <div class="section pb">
+            <div class="section-header">
+                <div class="section-num">10</div>
+                <div>
+                    <div class="section-title">Complete Request Flow</div>
+                    <div class="section-subtitle">End-to-end from typing a query to reading a full AI analysis</div>
+                </div>
+            </div>
+
+            <ol class="flow-list">
+                <li><span>User types a query in the <strong>SearchBar</strong> on the DEOZA homepage (or clicks a Quick
+                        Chip).</span></li>
+                <li><span>Pressing Enter or clicking Search calls
+                        <code>router.push("/deoza/search?q={query}")</code>.</span></li>
+                <li><span>Search page mounts. <code>useEffect</code> detects query param → calls
+                        <code>runSearch(query)</code>.</span></li>
+                <li><span>Frontend sends <code>POST /api/deoza/search</code> with
+                        <code>{ query, filters }</code>.</span></li>
+                <li><span>Route fires <code>Promise.all([fetchSemanticScholar(q,15), fetchArxiv(q,15)])</code> —
+                        <strong>both APIs queried in parallel</strong> with 8-second timeouts each.</span></li>
+                <li><span>Semantic Scholar returns up to 15 JSON papers. arXiv returns Atom/XML — parsed with regex into
+                        UnifiedPaper[] objects.</span></li>
+                <li><span>Combined array of up to 30 papers. Active filters applied (source / openAccess / yearFrom /
+                        yearTo / minCitations).</span></li>
+                <li><span><code>scoreResult()</code> ranks all remaining papers. Results sorted descending by
+                        score.</span></li>
+                <li><span>Route returns <code>{ results: UnifiedPaper[], total: number }</code>. History entry
+                        saved.</span></li>
+                <li><span>PaperCards rendered with staggered Framer Motion entrance. FieldInsightPanel appears at top
+                        (collapsed).</span></li>
+                <li><span>User clicks <strong>"Field Intelligence"</strong> → <code>POST /api/deoza/insight</code> sends
+                        query → Groq returns 4-section briefing at temp=0.5.</span></li>
+                <li><span>User clicks <strong>"AI Summary"</strong> on a PaperCard → navigates to
+                        <code>/deoza/paper/[id]</code> with full paper JSON in URL.</span></li>
+                <li><span>Paper Detail page decodes URL params, renders paper metadata, AISummaryPanel, and
+                        ChatPanel.</span></li>
+                <li><span>User expands AISummaryPanel → <code>POST /api/deoza/summarize</code> with title + abstract →
+                        Groq returns 7-section analysis at temp=0.4.</span></li>
+                <li><span>User types a question in ChatPanel → <code>POST /api/deoza/chat</code> with paper context +
+                        full message history → Groq responds at temp=0.6.</span></li>
+                <li><span>Each chat turn appends to <code>chatMessages[]</code> state. Full history sent on every
+                        subsequent turn.</span></li>
+                <li><span>User saves paper → <code>addPaper(paper)</code> in Zustand → persisted to localStorage →
+                        library badge appears.</span></li>
+            </ol>
+        </div>
+
+        <!-- ══ SECTION 11 ══ -->
+        <div class="section pb">
+            <div class="section-header">
+                <div class="section-num">11</div>
+                <div>
+                    <div class="section-title">All 4 Groq API Endpoints Compared</div>
+                    <div class="section-subtitle">Parameters, temperature choices, and design rationale</div>
+                </div>
+            </div>
+
+            <table>
+                <tr>
+                    <th>Endpoint</th>
+                    <th>Model</th>
+                    <th>Temp</th>
+                    <th>Max Tokens</th>
+                    <th>System Prompt</th>
+                    <th>Why This Temp?</th>
+                </tr>
+                <tr>
+                    <td><code>/api/deoza/insight</code></td>
+                    <td>llama-3.3-70b</td>
+                    <td><strong>0.5</strong></td>
+                    <td>600</td>
+                    <td>No system — inline prompt only</td>
+                    <td>Moderate: broad domain knowledge needs some creativity but must stay factual</td>
+                </tr>
+                <tr>
+                    <td><code>/api/deoza/summarize</code></td>
+                    <td>llama-3.3-70b</td>
+                    <td><strong>0.4</strong></td>
+                    <td>Default</td>
+                    <td>DEOZA academic persona + 7 rules</td>
+                    <td>Low: structured 7-section output needs consistency and grounding</td>
+                </tr>
+                <tr>
+                    <td><code>/api/deoza/chat</code></td>
+                    <td>llama-3.3-70b</td>
+                    <td><strong>0.6</strong></td>
+                    <td>1024</td>
+                    <td>Paper title + abstract injected</td>
+                    <td>Higher: conversational, natural, friendly while still grounded</td>
+                </tr>
+                <tr>
+                    <td>ALAMIX <code>/api/alamix/extract</code></td>
+                    <td>llama-3.3-70b</td>
+                    <td><strong>0.0</strong></td>
+                    <td>Default</td>
+                    <td>10-directive extraction prompt</td>
+                    <td>Zero: fully deterministic — academic extraction must be reproducible</td>
+                </tr>
+            </table>
+
+            <div class="callout purple">
+                <div class="callout-icon">🧠</div>
+                <div class="callout-body">
+                    <div class="callout-title">Temperature Is Everything</div>
+                    <p class="callout-text">The entire DEOZA+ALAMIX system uses <strong>one model</strong> (LLaMA 3.3
+                        70B) for all 4 tasks, but temperature tuning makes each endpoint behave like a completely
+                        different specialist system. 0.0 = pure extraction machine. 0.4 = structured academic analyst.
+                        0.5 = domain knowledge synthesizer. 0.6 = natural research conversation partner.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ SECTION 12 ══ -->
+        <div class="section">
+            <div class="section-header">
+                <div class="section-num">12</div>
+                <div>
+                    <div class="section-title">File Map &amp; Technology Summary</div>
+                    <div class="section-subtitle">All source files, dependencies, and technology decisions</div>
+                </div>
+            </div>
+
+            <h3>Source Files</h3>
+            <div class="file-map">
+                <div class="file-card">
+                    <div class="fname">src/app/(dashboard)/deoza/page.tsx</div>
+                    <div class="frole">Homepage — SearchBar (hero), Quick Chips, Library shortcut, Framer Motion
+                        entrance</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/app/(dashboard)/deoza/search/page.tsx</div>
+                    <div class="frole">Search results — runSearch(), FilterPanel, FieldInsightPanel, PaperCard grid,
+                        history save</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/app/(dashboard)/deoza/paper/[id]/page.tsx</div>
+                    <div class="frole">Paper detail — decodes URL params, renders AISummaryPanel + ChatPanel</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/app/(dashboard)/deoza/library/page.tsx</div>
+                    <div class="frole">Personal library — displays all savedPapers from Zustand with remove actions
+                    </div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/app/api/deoza/search/route.ts</div>
+                    <div class="frole">Search engine — parallel Semantic Scholar + arXiv fetch, merge, filter, rank,
+                        return</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/app/api/deoza/insight/route.ts</div>
+                    <div class="frole">Field Intelligence — Groq temp=0.5, max_tokens=600, inline prompt, 4-section
+                        briefing</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/app/api/deoza/summarize/route.ts</div>
+                    <div class="frole">Paper Analyzer — Groq temp=0.4, system prompt + 7-section directive, full
+                        analysis</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/app/api/deoza/chat/route.ts</div>
+                    <div class="frole">Chat — Groq temp=0.6, max_tokens=1024, paper context system prompt, full history
+                    </div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/components/deoza/SearchBar.tsx</div>
+                    <div class="frole">Search input — hero/compact sizes, Quick Chips, Enter/click submit, router.push
+                    </div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/components/deoza/PaperCard.tsx</div>
+                    <div class="frole">Result card — Framer Motion, source badge, save toggle, AI Summary nav, PDF link
+                    </div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/components/deoza/FieldInsightPanel.tsx</div>
+                    <div class="frole">Field briefing — lazy fetch on expand, cached per query, reset on new query</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/components/deoza/AISummaryPanel.tsx</div>
+                    <div class="frole">Paper analysis — lazy fetch, 7-section formatted output, formatAnalysis() parser
+                    </div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/components/deoza/ChatPanel.tsx</div>
+                    <div class="frole">Chat UI — message history, Quick Questions chips, loading state, user/assistant
+                        bubbles</div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/components/deoza/FilterPanel.tsx</div>
+                    <div class="frole">Filter sidebar — source selector, open access toggle, year range, min citations
+                    </div>
+                </div>
+                <div class="file-card">
+                    <div class="fname">src/lib/deoza-store.ts</div>
+                    <div class="frole">Zustand store — searchQuery, searchResults, isSearching, filters, savedPapers
+                        (localStorage persisted)</div>
+                </div>
+            </div>
+
+            <h3>Technology Stack</h3>
+            <table>
+                <tr>
+                    <th>Layer</th>
+                    <th>Technology</th>
+                    <th>Purpose</th>
+                </tr>
+                <tr>
+                    <td>Frontend</td>
+                    <td>Next.js 14 (App Router)</td>
+                    <td>Pages, API routes, client components</td>
+                </tr>
+                <tr>
+                    <td>State</td>
+                    <td>Zustand</td>
+                    <td>Global search state + library persistence (localStorage)</td>
+                </tr>
+                <tr>
+                    <td>Animation</td>
+                    <td>Framer Motion</td>
+                    <td>Card entrances, panel expand/collapse, page fade</td>
+                </tr>
+                <tr>
+                    <td>Icons</td>
+                    <td>Lucide React</td>
+                    <td>Search, Bookmark, Sparkles, Cpu, Library, ExternalLink</td>
+                </tr>
+                <tr>
+                    <td>LLM Provider</td>
+                    <td>Groq Cloud API</td>
+                    <td>All 3 AI features (insight, summarize, chat)</td>
+                </tr>
+                <tr>
+                    <td>LLM Model</td>
+                    <td>llama-3.3-70b-versatile</td>
+                    <td>Same model, 3 different temperatures across endpoints</td>
+                </tr>
+                <tr>
+                    <td>Paper Source 1</td>
+                    <td>Semantic Scholar API</td>
+                    <td>Citation-rich academic search, structured metadata</td>
+                </tr>
+                <tr>
+                    <td>Paper Source 2</td>
+                    <td>arXiv Atom/XML API</td>
+                    <td>Preprints, CS/ML papers, always open access</td>
+                </tr>
+                <tr>
+                    <td>XML Parsing</td>
+                    <td>Native regex (no library)</td>
+                    <td>Parses arXiv Atom feed without dependencies</td>
+                </tr>
+                <tr>
+                    <td>API Key</td>
+                    <td><code>GROQ_API_KEY</code> env var</td>
+                    <td>Server-side only; optional <code>SEMANTIC_SCHOLAR_API_KEY</code></td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="footer">
+            <span>DEOZA · ALTRIX Platform · Technical Architecture Document</span>
+            <span>Generated February 2026</span>
+        </div>
+    </div>
+</body>
+
+</html>

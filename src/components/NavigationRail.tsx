@@ -3,16 +3,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
-import { Home, Zap, Layers, Grid } from "lucide-react";
+import { Home, Zap, Layers, Cpu, Clock } from "lucide-react";
+import { useHistoryPanel } from "@/lib/history-store";
 
 const navItems = [
     { name: "Sentic", path: "/sentic", icon: Zap, color: "text-purple-400" },
     { name: "Alamix", path: "/alamix", icon: Layers, color: "text-blue-400" },
-    { name: "Deoza", path: "/deoza", icon: Grid, color: "text-emerald-400" },
+    { name: "Deoza", path: "/deoza", icon: Cpu, color: "text-emerald-400" },
 ];
 
 export default function NavigationRail() {
     const pathname = usePathname();
+    const { toggle } = useHistoryPanel();
+
+    // Only show history button on tool pages (not landing)
+    const onToolPage = navItems.some((item) => pathname.startsWith(item.path));
 
     return (
         <motion.div
@@ -29,7 +34,7 @@ export default function NavigationRail() {
                 </span>
             </Link>
 
-            <div className="flex flex-col gap-8 w-full items-center">
+            <div className="flex flex-col gap-8 w-full items-center flex-1">
                 {navItems.map((item) => {
                     const isActive = pathname.startsWith(item.path);
                     const Icon = item.icon;
@@ -61,6 +66,22 @@ export default function NavigationRail() {
                     );
                 })}
             </div>
+
+            {/* History button — bottom of rail, only on tool pages */}
+            {onToolPage && (
+                <motion.button
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    onClick={toggle}
+                    className="relative group p-3 rounded-xl hover:bg-white/5 transition-all"
+                    title="History"
+                >
+                    <Clock size={22} className="text-gray-400 group-hover:text-white transition-colors" />
+                    <span className="absolute left-14 top-1/2 -translate-y-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none border border-white/10 ml-2">
+                        History
+                    </span>
+                </motion.button>
+            )}
         </motion.div>
     );
 }

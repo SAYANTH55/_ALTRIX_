@@ -1,339 +1,465 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import Image from "next/image";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { parsePdf, parseDocx, parseTxt, fileToBase64 } from "@/lib/file-processing";
 import {
-    processText,
-    Tone,
-    Audience,
-    Formality,
-    AntiGravityOutput,
-} from "@/lib/antigravity";
-import { parsePdf, parseDocx, parseTxt, fileToBase64 } from '@/lib/file-processing';
-import { Clipboard, ClipboardPaste, Check, Upload, FileText, X, Mic, History, StopCircle, Home as HomeIcon, Volume2 } from "lucide-react";
+    Clipboard, ClipboardPaste, Check, Upload, FileText, X,
+    Mic, StopCircle, Home as HomeIcon, Volume2, RefreshCw,
+    ChevronDown, Activity, Settings,
+} from "lucide-react";
 import ExportDropdown from "@/components/ExportDropdown";
-import HistorySidebar from "@/components/HistorySidebar";
+import UnifiedHistorySidebar, { addSenticHistory } from "@/components/UnifiedHistorySidebar";
+import { useHistoryPanel } from "@/lib/history-store";
 
-export default function Home() {
+// ─── Types ───────────────────────────────────────────────────────────────────
+type EntropyLevel = "Low" | "Medium" | "High" | "Max";
+type Audience = "Student" | "Professional" | "General Reader" | "Expert";
+
+interface TextProcessingSettings {
+    removeUnicode: boolean;
+    dashesToCommas: boolean;
+    removeDashes: boolean;
+    transformQuotes: boolean;
+    removeWhitespace: boolean;
+    removeEmDash: boolean;
+}
+
+interface HumanizeOutput {
+    humanizedText: string;
+    analysis: { intent: string; tone: string; audience: string; formality: string } | null;
+    explainability: {
+        intentPreservation: string;
+        toneAdjustments: string;
+        stylisticChanges: string;
+        humanizationTechniques: string;
+    } | null;
+}
+
+// ─── Text processing functions ───────────────────────────────────────────────
+function applyTextProcessing(text: string, settings: TextProcessingSettings): string {
+    let out = text;
+    if (settings.removeUnicode) out = out.replace(/[^\x00-\x7F]/g, " ");
+    if (settings.dashesToCommas) out = out.replace(/\s*[-–]\s*/g, ", ");
+    if (settings.removeDashes) out = out.replace(/[-–—]/g, " ");
+    if (settings.removeEmDash) out = out.replace(/—/g, " ");
+    if (settings.transformQuotes) out = out.replace(/[""'']/g, '"');
+    if (settings.removeWhitespace) out = out.replace(/\s{2,}/g, " ").trim();
+    return out;
+}
+
+// ─── Banned AI-isms (for client-side AI score) ───────────────────────────────
+const BANNED = [
+    "comprehensive", "foster", "delve", "tap into", "multifaceted", "underscores",
+    "underscore", "testament", "realm", "pivotal", "intricate", "democratize",
+    "game-changer", "unleash", "leverage", "holistic", "furthermore", "moreover",
+    "in addition", "additionally",
+];
+
+// ─── AI Score Estimator ──────────────────────────────────────────────────────
+function estimateAiScore(text: string): { level: "low" | "medium" | "high"; score: number; detail: string } {
+    if (!text.trim()) return { level: "low", score: 0, detail: "No output yet" };
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 4);
+    if (sentences.length < 2) return { level: "medium", score: 50, detail: "Too short to analyse" };
+    const lengths = sentences.map(s => s.trim().split(/\s+/).length);
+    const mean = lengths.reduce((a, b) => a + b, 0) / lengths.length;
+    const variance = lengths.reduce((s, l) => s + Math.pow(l - mean, 2), 0) / lengths.length;
+    const cv = Math.sqrt(variance) / mean;
+    const lower = text.toLowerCase();
+    const hits = BANNED.filter(w => lower.includes(w)).length;
+    const richness = Math.min((text.match(/—/g) || []).length + (text.match(/\(/g) || []).length + (text.match(/;/g) || []).length, 6);
+    let score = 100;
+    score -= Math.min(cv * 60, 50);
+    score += hits * 12;
+    score -= richness * 6;
+    score = Math.max(0, Math.min(100, Math.round(score)));
+    const level = score < 35 ? "low" : score < 65 ? "medium" : "high";
+    const detail = [
+        `Burstiness CV: ${cv.toFixed(2)}`,
+        hits > 0 ? `⚠ ${hits} AI-ism(s)` : "✓ No banned words",
+        `Punctuation richness: ${richness}`,
+    ].join(" · ");
+    return { level, score, detail };
+}
+
+// ─── AI Score Badge ──────────────────────────────────────────────────────────
+function AiScoreBadge({ text }: { text: string }) {
+    const { level, score, detail } = useMemo(() => estimateAiScore(text), [text]);
+    const colours: Record<string, string> = {
+        low: "from-emerald-500/20 to-emerald-600/10 border-emerald-500/30 text-emerald-300",
+        medium: "from-amber-500/20  to-amber-600/10  border-amber-500/30  text-amber-300",
+        high: "from-red-500/20    to-red-600/10    border-red-500/30    text-red-300",
+    };
+    const icons = { low: "🟢", medium: "🟡", high: "🔴" };
+    const labels = { low: "Low AI Signal", medium: "Medium AI Signal", high: "High AI Signal" };
+    return (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            className={`w-full rounded-2xl bg-gradient-to-br ${colours[level]} border backdrop-blur-xl p-4`}>
+            <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                    <Activity size={13} className="opacity-70" />
+                    <span className="text-[9px] font-bold tracking-[0.4em] uppercase opacity-60">AI Score Estimator</span>
+                </div>
+                <span className="text-sm font-bold font-mono">{icons[level]} {labels[level]}</span>
+            </div>
+            <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden mb-2">
+                <motion.div initial={{ width: 0 }} animate={{ width: `${score}%` }} transition={{ duration: 0.8, ease: "easeOut" }}
+                    className={`h-full rounded-full ${level === "low" ? "bg-emerald-400" : level === "medium" ? "bg-amber-400" : "bg-red-400"}`} />
+            </div>
+            <p className="text-[10px] opacity-60 font-mono">{detail}</p>
+        </motion.div>
+    );
+}
+
+// ─── Glass dropdown ──────────────────────────────────────────────────────────
+interface GlassSelectProps<T extends string> {
+    label: string; value: T; onChange: (v: T) => void; options: { value: T; label: string }[];
+}
+function GlassSelect<T extends string>({ label, value, onChange, options }: GlassSelectProps<T>) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+        document.addEventListener("mousedown", h);
+        return () => document.removeEventListener("mousedown", h);
+    }, []);
+    const current = options.find(o => o.value === value)?.label ?? value;
+    return (
+        <div ref={ref} className="relative flex-1 min-w-0">
+            <p className="text-[9px] font-bold tracking-[0.3em] uppercase text-purple-400/50 mb-1.5 pl-1">{label}</p>
+            <button onClick={() => setOpen(p => !p)}
+                className="w-full flex items-center justify-between gap-2 px-4 py-3 rounded-2xl bg-white/[0.04] border border-white/10 hover:border-purple-500/30 hover:bg-white/[0.07] backdrop-blur-md transition-all duration-200">
+                <span className="text-sm text-white/80 font-medium">{current}</span>
+                <motion.span animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }} className="text-purple-400/60">
+                    <ChevronDown size={14} />
+                </motion.span>
+            </button>
+            <AnimatePresence>
+                {open && (
+                    <motion.div initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={{ duration: 0.15 }}
+                        className="absolute top-full mt-2 left-0 right-0 z-50 rounded-2xl bg-[#0e0616]/90 border border-purple-500/20 backdrop-blur-xl shadow-2xl shadow-black/60 overflow-hidden">
+                        {options.map(opt => (
+                            <button key={opt.value} onClick={() => { onChange(opt.value); setOpen(false); }}
+                                className={`w-full text-left px-4 py-3 text-sm transition-all duration-150 ${opt.value === value ? "text-purple-300 bg-purple-500/15 font-semibold" : "text-gray-300 hover:bg-white/[0.06] hover:text-white"}`}>
+                                {opt.label}
+                            </button>
+                        ))}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}
+
+// ─── Toggle row ───────────────────────────────────────────────────────────────
+function ToggleRow({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) {
+    return (
+        <div className="flex items-center justify-between py-3 border-b border-white/[0.05] last:border-0">
+            <span className="text-sm text-white/70">{label}</span>
+            <button onClick={() => onChange(!value)}
+                className={`relative w-11 h-6 rounded-full transition-all duration-300 ${value ? "bg-emerald-500" : "bg-white/10"}`}>
+                <motion.span animate={{ x: value ? 20 : 2 }} transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-md block" />
+            </button>
+        </div>
+    );
+}
+
+// ─── Text Processing Settings Modal ──────────────────────────────────────────
+function TextSettingsModal({ settings, onChange, onClose }: {
+    settings: TextProcessingSettings;
+    onChange: (s: TextProcessingSettings) => void;
+    onClose: () => void;
+}) {
+    const set = (key: keyof TextProcessingSettings) => (v: boolean) => onChange({ ...settings, [key]: v });
+    return (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md"
+            onClick={onClose}>
+            <motion.div initial={{ scale: 0.94, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.94, opacity: 0 }}
+                onClick={e => e.stopPropagation()}
+                className="relative bg-[#0e0616]/95 border border-purple-500/25 p-7 rounded-3xl w-full max-w-sm shadow-2xl shadow-black/60 backdrop-blur-2xl">
+                <button onClick={onClose} className="absolute top-5 right-5 text-gray-500 hover:text-white transition-colors"><X size={16} /></button>
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20">
+                        <Settings size={18} className="text-purple-300" />
+                    </div>
+                    <h3 className="text-base font-bold text-white tracking-wide">Text Processing Settings</h3>
+                </div>
+                <div className="divide-y divide-white/[0.05]">
+                    <ToggleRow label="Remove hidden unicode characters" value={settings.removeUnicode} onChange={set("removeUnicode")} />
+                    <ToggleRow label="Turn dashes into commas" value={settings.dashesToCommas} onChange={set("dashesToCommas")} />
+                    <ToggleRow label="Remove dashes completely" value={settings.removeDashes} onChange={set("removeDashes")} />
+                    <ToggleRow label="Transform quotes" value={settings.transformQuotes} onChange={set("transformQuotes")} />
+                    <ToggleRow label="Remove persistent whitespace" value={settings.removeWhitespace} onChange={set("removeWhitespace")} />
+                    <ToggleRow label="Remove Em-dash" value={settings.removeEmDash} onChange={set("removeEmDash")} />
+                </div>
+                <button onClick={onClose}
+                    className="mt-6 w-full py-3 rounded-2xl bg-white/[0.05] border border-white/10 hover:bg-white/[0.09] text-white/70 hover:text-white text-sm font-medium transition-all">
+                    Close
+                </button>
+            </motion.div>
+        </motion.div>
+    );
+}
+
+// ─── Neural background lines ─────────────────────────────────────────────────
+function NeuralLines() {
+    return (
+        <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-[0.04]" viewBox="0 0 900 500" preserveAspectRatio="xMidYMid slice">
+            {["M100,150 Q350,80 600,180 T900,130", "M50,280 Q300,200 550,300 T900,260", "M150,400 Q400,310 650,380"].map((d, i) => (
+                <motion.path key={i} d={d} stroke="#a855f7" strokeWidth="1" fill="none"
+                    initial={{ pathLength: 0, opacity: 0 }} animate={{ pathLength: 1, opacity: 1 }}
+                    transition={{ duration: 3 + i * 0.5, delay: i * 0.4 }} />
+            ))}
+        </svg>
+    );
+}
+
+// ─── Pill button ──────────────────────────────────────────────────────────────
+function PillBtn({ onClick, active, label, icon, activeClass = "text-red-400 border-red-500/40 bg-red-500/10" }: {
+    onClick: () => void; active?: boolean; label: string; icon: React.ReactNode; activeClass?: string;
+}) {
+    return (
+        <button onClick={onClick}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-md border text-[11px] font-semibold tracking-wide transition-all duration-200
+                ${active ? activeClass + " animate-pulse" : "bg-white/[0.05] border-white/10 text-white/60 hover:bg-white/[0.1] hover:border-purple-500/30 hover:text-white"}`}>
+            {icon} {label}
+        </button>
+    );
+}
+
+// ─── Stat pill ────────────────────────────────────────────────────────────────
+function StatPill({ words, chars }: { words: number; chars: number }) {
+    return (
+        <div className="absolute bottom-3 right-3 flex gap-1.5 pointer-events-none z-10">
+            <span className="px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-[9px] text-gray-500 tracking-widest font-mono">{words}w</span>
+            <span className="px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-[9px] text-gray-500 tracking-widest font-mono">{chars}c</span>
+        </div>
+    );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+export default function SenticPage() {
     const [text, setText] = useState("");
-    const [tone, setTone] = useState<Tone>("Neutral");
     const [audience, setAudience] = useState<Audience>("General Reader");
-    const [formality, setFormality] = useState<Formality>("Medium");
+    const [entropy, setEntropy] = useState<EntropyLevel>("High");
+    const [showSettings, setShowSettings] = useState(false);
+    const [settings, setSettings] = useState<TextProcessingSettings>({
+        removeUnicode: false,
+        dashesToCommas: false,
+        removeDashes: false,
+        transformQuotes: false,
+        removeWhitespace: false,
+        removeEmDash: false,
+    });
 
     const [loading, setLoading] = useState(false);
-    const [result, setResult] = useState<AntiGravityOutput | null>(null);
+    const [result, setResult] = useState<HumanizeOutput | null>(null);
+    const [displayedText, setDisplayedText] = useState("");
     const [copied, setCopied] = useState(false);
-
+    const [expandSummary, setExpandSummary] = useState(false);
+    const [expandAnalysis, setExpandAnalysis] = useState(false);
     const [showSummarizeModal, setShowSummarizeModal] = useState(false);
     const [processedFileText, setProcessedFileText] = useState("");
-    const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // New State for Productivity Suite
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [isRecording, setIsRecording] = useState(false);
-    const [showHistory, setShowHistory] = useState(false);
-    const [historyTrigger, setHistoryTrigger] = useState(0);
     const [isSpeaking, setIsSpeaking] = useState(false);
+    const { close: closeHistory } = useHistoryPanel();
     const recognitionRef = useRef<any>(null);
-    const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+    // Recompute displayed text whenever result or settings change
+    useEffect(() => {
+        if (result?.humanizedText) {
+            setDisplayedText(applyTextProcessing(result.humanizedText, settings));
+        }
+    }, [result, settings]);
 
     useEffect(() => {
-        if (typeof window !== 'undefined' && (window as unknown as { webkitSpeechRecognition: any }).webkitSpeechRecognition) {
-            const SpeechRecognition = (window as unknown as { webkitSpeechRecognition: any }).webkitSpeechRecognition;
-            const recognition = new SpeechRecognition();
-            recognition.continuous = true;
-            recognition.interimResults = true;
-
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            recognition.onresult = (event: any) => {
-                let interimTranscript = '';
-                let finalTranscript = '';
-
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        finalTranscript += event.results[i][0].transcript;
-                    } else {
-                        interimTranscript += event.results[i][0].transcript;
-                    }
-                }
-
-                if (finalTranscript) {
-                    setText(prev => prev + (prev ? ' ' : '') + finalTranscript);
-                }
+        if (typeof window !== "undefined" && (window as any).webkitSpeechRecognition) {
+            const SR = (window as any).webkitSpeechRecognition;
+            const rec = new SR();
+            rec.continuous = true;
+            rec.interimResults = true;
+            rec.onresult = (e: any) => {
+                let final = "";
+                for (let i = e.resultIndex; i < e.results.length; ++i)
+                    if (e.results[i].isFinal) final += e.results[i][0].transcript;
+                if (final) setText(p => p + (p ? " " : "") + final);
             };
-
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            recognition.onerror = (event: any) => {
-                console.error("Speech recognition error", event.error);
-                setIsRecording(false);
-            };
-
-            recognition.onend = () => {
-                setIsRecording(false);
-            };
-
-            recognitionRef.current = recognition;
+            rec.onerror = (e: any) => { console.error(e.error); setIsRecording(false); };
+            rec.onend = () => setIsRecording(false);
+            recognitionRef.current = rec;
         }
-
-        return () => {
-            if (typeof window !== 'undefined') {
-                window.speechSynthesis.cancel();
-            }
-        };
+        return () => { if (typeof window !== "undefined") window.speechSynthesis.cancel(); };
     }, []);
 
     const toggleRecording = () => {
-        if (!recognitionRef.current) {
-            alert("Speech recognition not supported in this browser. Try Chrome.");
-            return;
-        }
-
-        if (isRecording) {
-            recognitionRef.current.stop();
-            setIsRecording(false);
-        } else {
-            recognitionRef.current.start();
-            setIsRecording(true);
-        }
+        if (!recognitionRef.current) { alert("Speech recognition not supported. Try Chrome."); return; }
+        if (isRecording) { recognitionRef.current.stop(); setIsRecording(false); }
+        else { recognitionRef.current.start(); setIsRecording(true); }
     };
 
     const toggleTTS = () => {
-        if (typeof window === 'undefined') return;
-
-        if (isSpeaking) {
-            window.speechSynthesis.cancel();
-            setIsSpeaking(false);
-        } else if (result?.humanizedText) {
-            const utterance = new SpeechSynthesisUtterance(result.humanizedText);
-            utterance.onend = () => setIsSpeaking(false);
-            utterance.onerror = () => setIsSpeaking(false);
-            utteranceRef.current = utterance;
+        if (typeof window === "undefined") return;
+        if (isSpeaking) { window.speechSynthesis.cancel(); setIsSpeaking(false); }
+        else if (displayedText) {
+            const u = new SpeechSynthesisUtterance(displayedText);
+            u.onend = () => setIsSpeaking(false);
+            u.onerror = () => setIsSpeaking(false);
             setIsSpeaking(true);
-            window.speechSynthesis.speak(utterance);
+            window.speechSynthesis.speak(u);
         }
     };
 
-    const addToHistory = (original: string, humanized: string) => {
-        const newItem = {
-            id: Date.now().toString(),
-            original,
-            humanized,
-            timestamp: new Date().toISOString()
-        };
-
-        const stored = localStorage.getItem("sentic_history");
-        let history = stored ? JSON.parse(stored) : [];
-
-        // Keep last 10
-        history = [newItem, ...history].slice(0, 10);
-        localStorage.setItem("sentic_history", JSON.stringify(history));
-        setHistoryTrigger(prev => prev + 1); // Trigger update
-    };
-
-    async function handleHumanize(mode: 'humanize' | 'summarize' = 'humanize') {
-        const textToProcess = mode === 'summarize' ? processedFileText : text;
-        if (!textToProcess.trim()) return;
-
+    async function handleHumanize(mode: "humanize" | "summarize" = "humanize") {
+        const src = mode === "summarize" ? processedFileText : text;
+        if (!src.trim()) return;
         setLoading(true);
         setShowSummarizeModal(false);
-
         try {
-            if (mode === 'summarize') {
-                const response = await fetch('/api/humanize', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: textToProcess, mode: 'summarize' })
-                });
-                const data = await response.json();
-                if (data.error) throw new Error(data.error);
+            const body = mode === "summarize"
+                ? { text: src, mode: "summarize" }
+                : { text: src, audience, formality: entropy, mode: "humanize" };
 
-                const outputVal = data.humanizedText;
-                setResult({
-                    humanizedText: outputVal,
-                    analysis: { intent: "N/A", tone: "N/A", audience: "N/A", formality: "N/A" },
-                    explainability: { intentPreservation: "N/A", toneAdjustments: "N/A", stylisticChanges: "N/A", humanizationTechniques: "N/A" }
-                });
-                addToHistory(textToProcess, outputVal);
+            const r = await fetch("/api/humanize", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+            });
+            const d = await r.json();
+            if (d.error) throw new Error(d.error);
 
-            } else {
-                const output = await processText({
-                    text: textToProcess,
-                    tone,
-                    audience,
-                    formality,
-                });
-                setResult(output);
-                addToHistory(textToProcess, output.humanizedText);
-            }
+            const out: HumanizeOutput = {
+                humanizedText: d.humanizedText,
+                analysis: d.analysis ?? null,
+                explainability: d.explainability ?? null,
+            };
+            setResult(out);
+            addSenticHistory(src, d.humanizedText);
         } catch (err: unknown) {
-            console.error(err);
-            const msg = err instanceof Error ? err.message : String(err);
-            alert(`Error: ${msg}`);
+            alert(`Error: ${err instanceof Error ? err.message : String(err)}`);
         } finally {
             setLoading(false);
-            if (mode === 'summarize') {
-                setText(processedFileText);
-            }
+            if (mode === "summarize") setText(processedFileText);
         }
     }
 
     const handlePaste = async () => {
-        try {
-            const textFromClipboard = await navigator.clipboard.readText();
-            setText(textFromClipboard);
-        } catch (err) {
-            console.error("Failed to paste:", err);
-        }
+        try { setText(await navigator.clipboard.readText()); } catch (e) { console.error(e); }
     };
 
     const handleCopy = async () => {
-        if (!result?.humanizedText) return;
-        try {
-            await navigator.clipboard.writeText(result.humanizedText);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        } catch (err) {
-            console.error("Failed to copy:", err);
-        }
+        if (!displayedText) return;
+        try { await navigator.clipboard.writeText(displayedText); setCopied(true); setTimeout(() => setCopied(false), 2000); }
+        catch (e) { console.error(e); }
     };
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-
         setLoading(true);
         try {
-            let extractedText = "";
-
-            if (file.type === "application/pdf") {
-                extractedText = await parsePdf(file);
-            } else if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-                extractedText = await parseDocx(file);
-            } else if (file.type === "text/plain") {
-                extractedText = await parseTxt(file);
-            } else if (file.type.startsWith("image/")) {
-                const base64 = await fileToBase64(file);
-                const response = await fetch('/api/humanize', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ mode: 'extract_image', imageData: base64, mimeType: file.type })
-                });
-                const data = await response.json();
-                if (data.error) throw new Error(data.error);
-                extractedText = data.text;
-            } else {
-                throw new Error("Unsupported file type");
-            }
-
-            setProcessedFileText(extractedText);
-            setText(extractedText);
+            let extracted = "";
+            if (file.type === "application/pdf") extracted = await parsePdf(file);
+            else if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") extracted = await parseDocx(file);
+            else if (file.type === "text/plain") extracted = await parseTxt(file);
+            else if (file.type.startsWith("image/")) {
+                const b64 = await fileToBase64(file);
+                const r = await fetch("/api/humanize", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "extract_image", imageData: b64, mimeType: file.type }) });
+                const d = await r.json();
+                if (d.error) throw new Error(d.error);
+                extracted = d.text;
+            } else throw new Error("Unsupported file type");
+            setProcessedFileText(extracted);
+            setText(extracted);
             setShowSummarizeModal(true);
-
         } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : String(err);
-            alert(`Failed to process file: ${msg}`);
+            alert(`Failed to process file: ${err instanceof Error ? err.message : String(err)}`);
         } finally {
             setLoading(false);
             if (fileInputRef.current) fileInputRef.current.value = "";
         }
     };
 
-    const wordCount = (val: string) => val.trim() ? val.trim().split(/\s+/).length : 0;
-    const charCount = (val: string) => val.length;
+    const wc = (v: string) => v.trim() ? v.trim().split(/\s+/).length : 0;
+    const cc = (v: string) => v.length;
+
+    const activeSettingsCount = Object.values(settings).filter(Boolean).length;
+
+    const audienceOpts: { value: Audience; label: string }[] = [
+        { value: "General Reader", label: "General Reader" },
+        { value: "Student", label: "Student" },
+        { value: "Professional", label: "Professional" },
+        { value: "Expert", label: "Expert" },
+    ];
+    const entropyOpts: { value: EntropyLevel; label: string }[] = [
+        { value: "Low", label: "Low — Minimal" },
+        { value: "Medium", label: "Medium — Balanced" },
+        { value: "High", label: "High — Strong" },
+        { value: "Max", label: "Max — Aggressive" },
+    ];
 
     return (
-        <main className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden">
+        <main className="min-h-screen flex flex-col items-center relative overflow-hidden bg-[#05010d] selection:bg-purple-500/30">
 
-            {/* Base Background Layer */}
-            <div className="fixed inset-0 bg-[#05010d] -z-20"></div>
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                @keyframes breathe { 0%,100%{opacity:.25} 50%{opacity:.6} }
+                .breathe { animation: breathe 7s ease-in-out infinite; }
+                @keyframes sweep { 0%{transform:translateX(-100%);opacity:0} 40%{opacity:1} 100%{transform:translateX(200%);opacity:0} }
+                .sweep { animation: sweep 1.8s ease-in-out infinite; }
+                @keyframes dotpulse { 0%,80%,100%{transform:scale(0.6);opacity:.3} 40%{transform:scale(1);opacity:1} }
+                .dot1{animation:dotpulse 1.2s ease-in-out infinite}
+                .dot2{animation:dotpulse 1.2s ease-in-out .2s infinite}
+                .dot3{animation:dotpulse 1.2s ease-in-out .4s infinite}
+                @keyframes ctapulse { 0%,100%{box-shadow:0 0 20px rgba(147,51,234,.35)} 50%{box-shadow:0 0 38px rgba(147,51,234,.6)} }
+                .cta-idle { animation: ctapulse 3s ease-in-out infinite; }
+            ` }} />
 
-            {/* Background Orbs */}
-            <div className="absolute top-0 left-0 w-[750px] h-[750px] bg-purple-600/65 rounded-full blur-[170px] -z-10 animate-pulse"></div>
-            <div className="absolute bottom-0 right-0 w-[750px] h-[750px] bg-indigo-600/65 rounded-full blur-[170px] -z-10 animate-pulse delay-700"></div>
+            <div className="fixed inset-0 bg-[#05010d] -z-50" />
+            <div className="fixed top-[-25%] left-[-10%] w-[900px] h-[900px] bg-purple-600/30 rounded-full blur-[200px] -z-40 breathe pointer-events-none" />
+            <div className="fixed bottom-[-25%] right-[-10%] w-[900px] h-[900px] bg-indigo-600/30 rounded-full blur-[200px] -z-40 breathe pointer-events-none" style={{ animationDelay: "1s" }} />
 
-            <HistorySidebar
-                isOpen={showHistory}
-                onClose={() => setShowHistory(false)}
-                toggleTrigger={historyTrigger}
-                onSelect={(item) => {
+            <UnifiedHistorySidebar
+                tool="sentic"
+                onSenticSelect={(item) => {
                     setText(item.original);
-                    setResult({
-                        humanizedText: item.humanized,
-                        analysis: { intent: "N/A", tone: "N/A", audience: "N/A", formality: "N/A" },
-                        explainability: { intentPreservation: "N/A", toneAdjustments: "N/A", stylisticChanges: "N/A", humanizationTechniques: "N/A" }
-                    }); // Naive restore
-                    setShowHistory(false);
+                    setResult({ humanizedText: item.humanized, analysis: null, explainability: null });
+                    closeHistory();
                 }}
             />
 
-            {/* History Toggle Button */}
-            {!showHistory && (
-                <motion.button
-                    initial={{ opacity: 0, x: -50 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    onClick={() => setShowHistory(true)}
-                    className="fixed top-6 left-6 z-50 p-3 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white backdrop-blur-md transition-all shadow-lg hover:shadow-purple-500/20 group"
-                    title="History"
-                >
-                    <History size={24} className="group-hover:text-purple-400 transition-colors" />
-                </motion.button>
-            )}
-
-            {/* Home / Reset Button */}
-            <motion.button
-                initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                onClick={() => {
-                    if (confirm("Are you sure you want to reset? Unsaved changes will be lost.")) {
-                        window.location.reload();
-                    }
-                }}
-                className="fixed top-6 right-6 z-50 p-3 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white backdrop-blur-md transition-all shadow-lg hover:shadow-purple-500/20 group"
-                title="Reset / Home"
-            >
-                <HomeIcon size={24} className="group-hover:text-purple-400 transition-colors" />
+            <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
+                onClick={() => { if (confirm("Reset workspace?")) window.location.reload(); }}
+                className="fixed top-6 right-6 z-50 p-2.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-white/40 hover:text-purple-300 backdrop-blur-md transition-all"
+                title="Reset">
+                <HomeIcon size={18} />
             </motion.button>
 
-
-            {/* Modal for Summarize/Edit */}
+            {/* File Modal */}
             <AnimatePresence>
                 {showSummarizeModal && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-                    >
-                        <motion.div
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.9, opacity: 0 }}
-                            className="bg-gray-900/90 border border-purple-500/30 p-8 rounded-2xl max-w-md w-full shadow-2xl relative"
-                        >
-                            <button onClick={() => setShowSummarizeModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-white">
-                                <X size={20} />
-                            </button>
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md">
+                        <motion.div initial={{ scale: 0.94, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.94, opacity: 0 }}
+                            className="relative bg-[#0e0616]/90 border border-purple-500/25 p-10 rounded-3xl max-w-sm w-full shadow-2xl">
+                            <button onClick={() => setShowSummarizeModal(false)} className="absolute top-5 right-5 text-gray-500 hover:text-white transition-colors"><X size={18} /></button>
                             <div className="flex justify-center mb-6">
-                                <div className="p-4 bg-purple-500/20 rounded-full">
-                                    <FileText size={48} className="text-purple-300" />
+                                <div className="p-5 bg-purple-500/10 border border-purple-500/20 rounded-full">
+                                    <FileText size={40} className="text-purple-300" />
                                 </div>
                             </div>
-                            <h3 className="text-2xl font-bold text-center text-white mb-2">File Processed</h3>
-                            <p className="text-center text-gray-400 mb-8">
-                                We extracted the text from your file. Would you like to summarize it or just edit it manually?
-                            </p>
-                            <div className="flex gap-4">
-                                <button
-                                    onClick={() => setShowSummarizeModal(false)}
-                                    className="flex-1 py-3 px-4 rounded-xl border border-white/10 hover:bg-white/10 text-white font-medium transition-colors"
-                                >
+                            <h3 className="text-xl font-bold text-center text-white font-orbitron tracking-wider mb-2">File Processed</h3>
+                            <p className="text-center text-gray-500 text-sm mb-8 leading-relaxed">Text extracted. Proceed with summarization or edit manually.</p>
+                            <div className="flex gap-3">
+                                <button onClick={() => setShowSummarizeModal(false)}
+                                    className="flex-1 py-3 rounded-2xl border border-white/10 hover:bg-white/[0.06] text-white/60 hover:text-white text-sm font-medium transition-all">
                                     Manual Edit
                                 </button>
-                                <button
-                                    onClick={() => handleHumanize('summarize')}
-                                    className="flex-1 py-3 px-4 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold shadow-lg shadow-purple-900/20 transition-all font-orbitron tracking-wider"
-                                >
+                                <button onClick={() => handleHumanize("summarize")}
+                                    className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-600 hover:to-indigo-600 text-white font-bold text-sm shadow-lg shadow-purple-900/30 transition-all font-orbitron tracking-wider">
                                     Summarize
                                 </button>
                             </div>
@@ -342,185 +468,242 @@ export default function Home() {
                 )}
             </AnimatePresence>
 
-            <div className="z-10 w-full max-w-2xl flex flex-col items-center">
-                <motion.h1
-                    initial={{ y: -20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    className="text-7xl font-bold mb-8 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-white tracking-widest font-orbitron"
-                >
+            {/* Text Processing Settings Modal */}
+            <AnimatePresence>
+                {showSettings && (
+                    <TextSettingsModal
+                        settings={settings}
+                        onChange={setSettings}
+                        onClose={() => setShowSettings(false)}
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* ── HERO ── */}
+            <section className="relative w-full flex flex-col items-center pt-6 pb-3 px-6 text-center overflow-hidden">
+                <NeuralLines />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[220px] bg-purple-600/10 rounded-full blur-[100px] pointer-events-none" />
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}
+                    className="mb-3 px-4 py-1 rounded-full border border-purple-500/20 bg-purple-500/5 text-[9px] font-bold tracking-[0.4em] uppercase text-purple-400/60">
+                    Linguistic Entropy Engine
+                </motion.div>
+                <motion.h1 initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1, duration: 0.7 }}
+                    className="text-[clamp(2.5rem,7vw,4.5rem)] font-bold bg-clip-text text-transparent bg-gradient-to-br from-white via-purple-200 to-purple-400 tracking-[0.18em] font-orbitron leading-none drop-shadow-[0_0_30px_rgba(168,85,247,0.3)]">
                     SENTIC
                 </motion.h1>
+                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }}
+                    className="mt-2 text-base font-bold tracking-[0.25em] uppercase text-purple-300/50">
+                    AI Text Humanization Engine
+                </motion.p>
+                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}
+                    className="mt-3 text-sm font-extralight tracking-[0.18em] text-white/30 breathe">
+                    Perplexity · Burstiness · Linguistic Entropy
+                </motion.p>
+            </section>
 
-                <div className="w-full relative group">
-                    <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg blur opacity-30 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
-                    <div className="relative">
-                        {/* Atmospheric Greeting */}
-                        <style dangerouslySetInnerHTML={{
-                            __html: `
-              @keyframes breathe {
-                0%, 100% { opacity: 0.3; }
-                50% { opacity: 0.7; }
-              }
-              .animate-breathe {
-                animation: breathe 7s ease-in-out infinite;
-              }
-            `}} />
+            {/* ── MAIN ── */}
+            <div className="w-full max-w-2xl px-4 pb-6 flex flex-col items-center gap-3 z-10">
 
-                        <AnimatePresence>
-                            {!text && (
-                                <motion.div
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    transition={{ duration: 0.5 }}
-                                    className="absolute inset-0 flex items-center justify-center pointer-events-none z-10"
-                                >
-                                    <span className="text-4xl font-extralight tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-white/60 to-purple-300 animate-breathe text-center px-4">
-                                        Seeking a human touch?
-                                    </span>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-
-                        {/* Button Group: Voice, Upload, Paste */}
-                        <div className="absolute top-3 right-3 z-20 flex gap-2">
-                            <button
-                                onClick={toggleRecording}
-                                className={`flex items-center gap-2 bg-white/10 hover:bg-white/20 text-xs font-medium text-white px-3 py-1.5 rounded-md backdrop-blur-md border border-white/10 transition-all ${isRecording ? 'text-red-400 border-red-500/50 animate-pulse bg-red-500/10' : ''}`}
-                            >
-                                {isRecording ? <StopCircle size={14} /> : <Mic size={14} />}
-                                {isRecording ? "Stop" : "Voice"}
-                            </button>
-
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                onChange={handleFileUpload}
-                                className="hidden"
-                                accept=".txt,.pdf,.docx,image/*"
-                            />
-                            <button
-                                onClick={() => fileInputRef.current?.click()}
-                                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-xs font-medium text-white px-3 py-1.5 rounded-md backdrop-blur-md border border-white/10 transition-all"
-                            >
-                                <Upload size={14} />
-                                Upload
-                            </button>
-
-                            <button
-                                onClick={handlePaste}
-                                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-xs font-medium text-white px-3 py-1.5 rounded-md backdrop-blur-md border border-white/10 transition-all"
-                            >
-                                <ClipboardPaste size={14} />
-                                Paste
-                            </button>
+                {/* Input panel */}
+                <motion.div initial={{ y: 24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2, duration: 0.7 }}
+                    className="w-full relative group">
+                    <div className="absolute -inset-px bg-gradient-to-r from-purple-600/70 to-indigo-600/70 rounded-3xl blur-md opacity-20 group-hover:opacity-40 transition duration-700" />
+                    <div className="relative rounded-3xl bg-white/[0.03] border border-white/[0.07] backdrop-blur-xl shadow-2xl overflow-hidden">
+                        <div className="px-5 pt-4 pb-2 border-b border-white/[0.05] flex items-center justify-between">
+                            <span className="text-[9px] font-bold tracking-[0.4em] uppercase text-purple-400/50">Input</span>
+                            <div className="flex gap-2">
+                                <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept=".txt,.pdf,.docx,image/*" />
+                                <PillBtn onClick={toggleRecording} active={isRecording} label={isRecording ? "Stop" : "Voice"} icon={isRecording ? <StopCircle size={12} /> : <Mic size={12} />} />
+                                <PillBtn onClick={() => fileInputRef.current?.click()} label="Upload" icon={<Upload size={12} />} />
+                                <PillBtn onClick={handlePaste} label="Paste" icon={<ClipboardPaste size={12} />} />
+                            </div>
                         </div>
-
-                        <textarea
-                            className="relative w-full h-96 p-6 pt-12 bg-white/5 backdrop-blur-md text-white border border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/50 shadow-xl text-lg placeholder-gray-400 resize-none transition-all scrollbar-hide"
-                            placeholder="Paste text or upload a file (PDF, Doc, Image)..."
-                            value={text}
-                            onChange={(e) => setText(e.target.value)}
-                        />
-
-                        {/* Stats */}
-                        <div className="absolute bottom-3 right-4 text-[10px] text-gray-500 pointer-events-none flex gap-3 uppercase tracking-tighter">
-                            <span>Words: {wordCount(text)}</span>
-                            <span>Chars: {charCount(text)}</span>
+                        <div className="relative">
+                            {loading && (
+                                <div className="absolute inset-0 z-20 overflow-hidden pointer-events-none">
+                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-500/10 to-transparent sweep" />
+                                </div>
+                            )}
+                            <AnimatePresence>
+                                {!text && !loading && (
+                                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                                        className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 px-8 pb-8">
+                                        <span className="text-2xl font-extralight tracking-wider text-white/15 text-center leading-relaxed">
+                                            Paste your AI-generated text here…
+                                        </span>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                            <textarea
+                                className="w-full h-44 p-4 bg-transparent text-white/90 focus:outline-none text-sm leading-6 placeholder-transparent resize-none scrollbar-hide"
+                                value={text}
+                                onChange={e => setText(e.target.value)}
+                            />
+                            <StatPill words={wc(text)} chars={cc(text)} />
                         </div>
                     </div>
-                </div>
+                </motion.div>
 
-                <div className="flex gap-4 my-8 w-full justify-between">
-                    <select
-                        className="bg-white/10 text-white p-3 rounded-lg border border-white/10 focus:outline-none focus:border-purple-500 hover:bg-white/20 cursor-pointer backdrop-blur-sm transition-all text-sm font-medium"
-                        value={tone}
-                        onChange={(e) => setTone(e.target.value as Tone)}
-                    >
-                        <option className="bg-gray-900">Neutral</option>
-                        <option className="bg-gray-900">Polite</option>
-                        <option className="bg-gray-900">Friendly</option>
-                        <option className="bg-gray-900">Formal</option>
-                    </select>
+                {/* Controls row — no Persona, just Audience + Entropy + Settings */}
+                <motion.div initial={{ y: 16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }}
+                    className="w-full flex gap-3 items-end">
+                    <GlassSelect label="Audience" value={audience} onChange={setAudience} options={audienceOpts} />
+                    <GlassSelect label="Entropy Level" value={entropy} onChange={setEntropy} options={entropyOpts} />
+                    {/* Settings button */}
+                    <div className="flex-shrink-0">
+                        <p className="text-[9px] font-bold tracking-[0.3em] uppercase text-purple-400/50 mb-1.5 pl-1">Settings</p>
+                        <button onClick={() => setShowSettings(true)}
+                            className="relative flex items-center gap-2 px-4 py-3 rounded-2xl bg-white/[0.04] border border-white/10 hover:border-purple-500/30 hover:bg-white/[0.07] backdrop-blur-md transition-all duration-200">
+                            <Settings size={15} className="text-purple-400/60" />
+                            <span className="text-sm text-white/70 font-medium whitespace-nowrap">Text Settings</span>
+                            {activeSettingsCount > 0 && (
+                                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-purple-500 text-white text-[10px] font-bold flex items-center justify-center">
+                                    {activeSettingsCount}
+                                </span>
+                            )}
+                        </button>
+                    </div>
+                </motion.div>
 
-                    <select
-                        className="bg-white/10 text-white p-3 rounded-lg border border-white/10 focus:outline-none focus:border-purple-500 hover:bg-white/20 cursor-pointer backdrop-blur-sm transition-all text-sm font-medium"
-                        value={audience}
-                        onChange={(e) => setAudience(e.target.value as Audience)}
-                    >
-                        <option className="bg-gray-900">General Reader</option>
-                        <option className="bg-gray-900">Student</option>
-                        <option className="bg-gray-900">Professional</option>
-                        <option className="bg-gray-900">Expert</option>
-                    </select>
+                {/* Entropy descriptor */}
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }} className="w-full px-1">
+                    <p className="text-[10px] text-purple-400/40 tracking-widest font-mono">
+                        {entropy === "Low" && "↳ Temperature 0.75 · Subtle restructuring · Safe for academic tone"}
+                        {entropy === "Medium" && "↳ Temperature 0.88 · Balanced burstiness · Good general use"}
+                        {entropy === "High" && "↳ Temperature 0.95 · Aggressive variance · Strong anti-detection"}
+                        {entropy === "Max" && "↳ Temperature 1.02 · Maximum unpredictability · Use with care"}
+                    </p>
+                </motion.div>
 
-                    <select
-                        className="bg-white/10 text-white p-3 rounded-lg border border-white/10 focus:outline-none focus:border-purple-500 hover:bg-white/20 cursor-pointer backdrop-blur-sm transition-all text-sm font-medium"
-                        value={formality}
-                        onChange={(e) => setFormality(e.target.value as Formality)}
-                    >
-                        <option className="bg-gray-900">Low</option>
-                        <option className="bg-gray-900">Medium</option>
-                        <option className="bg-gray-900">High</option>
-                    </select>
-                </div>
+                {/* CTA */}
+                <motion.div initial={{ y: 16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4 }}
+                    className="w-full flex flex-col items-center gap-2">
+                    <motion.button
+                        whileHover={{ y: -2, boxShadow: "0 0 50px rgba(147,51,234,.65)" }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => handleHumanize("humanize")}
+                        disabled={loading}
+                        className="relative w-full py-4 rounded-2xl font-orbitron font-bold tracking-widest text-base text-white overflow-hidden disabled:opacity-60 disabled:cursor-not-allowed cta-idle transition-all duration-300">
+                        <div className="absolute inset-0 bg-gradient-to-r from-purple-800 via-purple-600 to-indigo-700" />
+                        <div className="absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
+                        <span className="relative flex items-center justify-center gap-3">
+                            {loading ? (
+                                <>
+                                    <span className="text-sm font-semibold tracking-widest text-purple-200">Processing</span>
+                                    <span className="flex gap-1.5 items-center">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-purple-300 dot1" />
+                                        <span className="w-1.5 h-1.5 rounded-full bg-purple-300 dot2" />
+                                        <span className="w-1.5 h-1.5 rounded-full bg-purple-300 dot3" />
+                                    </span>
+                                </>
+                            ) : "Humanize Text"}
+                        </span>
+                    </motion.button>
+                    <p className="text-[10px] text-white/15 tracking-widest text-center">
+                        2-stage pipeline · Groq Linguistic Entropy → BERT Pragmatic Markers
+                    </p>
+                </motion.div>
 
-                <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => handleHumanize('humanize')}
-                    disabled={loading}
-                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-12 rounded-full shadow-lg hover:shadow-purple-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed font-orbitron tracking-widest text-lg"
-                >
-                    {loading ? "Processing..." : "Humanize Text"}
-                </motion.button>
+                {/* Results */}
+                <AnimatePresence>
+                    {result && (
+                        <motion.div initial={{ y: 24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 12, opacity: 0 }}
+                            transition={{ duration: 0.5 }} className="w-full flex flex-col gap-3">
 
-                {result && (
-                    <motion.div
-                        initial={{ y: 20, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        className="mt-10 w-full relative group"
-                    >
-                        <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg blur opacity-30 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
-                        <div className="relative">
-                            <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
-                                {/* TTS Button */}
-                                <button
-                                    onClick={toggleTTS}
-                                    className={`flex items-center gap-2 bg-white/10 hover:bg-white/20 text-xs font-medium text-white px-3 py-1.5 rounded-md backdrop-blur-md border border-white/10 transition-all ${isSpeaking ? 'text-purple-400 border-purple-500/50 animate-pulse' : ''}`}
-                                    title={isSpeaking ? "Stop Speaking" : "Read Aloud"}
-                                >
-                                    <Volume2 size={14} className={isSpeaking ? "animate-bounce" : ""} />
-                                    {isSpeaking ? "Stop" : "Listen"}
-                                </button>
-
-                                <ExportDropdown text={result.humanizedText} />
-
-                                <button
-                                    onClick={handleCopy}
-                                    className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-xs font-medium text-white px-3 py-1.5 rounded-md backdrop-blur-md border border-white/10 transition-all"
-                                >
-                                    {copied ? <Check size={14} className="text-green-400" /> : <Clipboard size={14} />}
-                                    {copied ? "Copied" : "Copy"}
-                                </button>
+                            {/* Output panel */}
+                            <div className="relative group">
+                                <div className="absolute -inset-px bg-gradient-to-r from-purple-600/60 to-indigo-600/60 rounded-3xl blur-md opacity-20 group-hover:opacity-35 transition duration-700" />
+                                <div className="relative rounded-3xl bg-white/[0.03] border border-white/[0.07] backdrop-blur-xl shadow-2xl overflow-hidden">
+                                    <div className="px-5 pt-4 pb-2 border-b border-white/[0.05] flex items-center justify-between">
+                                        <span className="text-[9px] font-bold tracking-[0.4em] uppercase text-purple-400/50">Humanized Version</span>
+                                        <div className="flex gap-2">
+                                            <PillBtn onClick={toggleTTS} active={isSpeaking} label={isSpeaking ? "Stop" : "Listen"}
+                                                icon={<Volume2 size={12} className={isSpeaking ? "animate-bounce" : ""} />}
+                                                activeClass="text-purple-300 border-purple-500/40 bg-purple-500/10" />
+                                            <PillBtn onClick={handleCopy} label={copied ? "Copied" : "Copy"}
+                                                icon={copied ? <Check size={12} className="text-emerald-400" /> : <Clipboard size={12} />} />
+                                            <ExportDropdown text={displayedText} />
+                                            <PillBtn onClick={() => handleHumanize("humanize")} label="Retry" icon={<RefreshCw size={12} />} />
+                                        </div>
+                                    </div>
+                                    <div className="relative">
+                                        <textarea readOnly
+                                            className="w-full min-h-60 p-5 bg-transparent text-white/85 focus:outline-none text-base leading-7 resize-none scrollbar-hide"
+                                            value={displayedText}
+                                        />
+                                        <StatPill words={wc(displayedText)} chars={cc(displayedText)} />
+                                    </div>
+                                </div>
                             </div>
 
-                            <textarea
-                                readOnly
-                                className="relative w-full min-h-[24rem] p-6 pt-12 bg-white/5 backdrop-blur-md text-white border border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/50 shadow-xl text-lg placeholder-gray-400 resize-none transition-all scrollbar-hide"
-                                value={result.humanizedText}
-                            />
+                            {/* AI Score Estimator */}
+                            <AiScoreBadge text={displayedText} />
 
-                            {/* Stats */}
-                            <div className="absolute bottom-3 right-4 text-[10px] text-gray-500 pointer-events-none flex gap-3 uppercase tracking-tighter">
-                                <span>Words: {wordCount(result.humanizedText)}</span>
-                                <span>Chars: {charCount(result.humanizedText)}</span>
-                            </div>
-                        </div>
-                    </motion.div>
-                )}
+                            {/* Pipeline Log */}
+                            {result.explainability && (
+                                <div className="relative rounded-2xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-xl overflow-hidden">
+                                    <button onClick={() => setExpandSummary(p => !p)}
+                                        className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-white/[0.03] transition-colors">
+                                        <span className="text-[9px] font-bold tracking-[0.4em] uppercase text-purple-400/50">Pipeline Log</span>
+                                        <ChevronDown size={13} className={`text-gray-600 transition-transform ${expandSummary ? "rotate-180" : ""}`} />
+                                    </button>
+                                    <AnimatePresence>
+                                        {expandSummary && (
+                                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                                                transition={{ duration: 0.25 }} className="overflow-hidden">
+                                                <div className="px-5 pb-5 space-y-3 border-t border-white/[0.05] pt-4">
+                                                    {[
+                                                        ["Techniques", result.explainability.humanizationTechniques],
+                                                        ["Voice", result.explainability.toneAdjustments],
+                                                        ["Structural Changes", result.explainability.stylisticChanges],
+                                                        ["Semantic Integrity", result.explainability.intentPreservation],
+                                                    ].map(([k, v]) => (
+                                                        <div key={k}>
+                                                            <p className="text-[9px] text-purple-400/40 uppercase tracking-widest mb-0.5">{k}</p>
+                                                            <p className="text-sm text-gray-400 leading-relaxed font-mono">{v}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                            )}
+
+                            {/* Entropy Parameters */}
+                            {result.analysis && (
+                                <div className="relative rounded-2xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-xl overflow-hidden">
+                                    <button onClick={() => setExpandAnalysis(p => !p)}
+                                        className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-white/[0.03] transition-colors">
+                                        <span className="text-[9px] font-bold tracking-[0.4em] uppercase text-purple-400/50">Entropy Parameters</span>
+                                        <ChevronDown size={13} className={`text-gray-600 transition-transform ${expandAnalysis ? "rotate-180" : ""}`} />
+                                    </button>
+                                    <AnimatePresence>
+                                        {expandAnalysis && (
+                                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                                                transition={{ duration: 0.25 }} className="overflow-hidden">
+                                                <div className="px-5 pb-5 grid grid-cols-2 gap-3 border-t border-white/[0.05] pt-4">
+                                                    {[
+                                                        ["Voice", result.analysis.tone],
+                                                        ["Audience", result.analysis.audience],
+                                                        ["Entropy Level", result.analysis.formality],
+                                                        ["Intent", result.analysis.intent],
+                                                    ].map(([k, v]) => (
+                                                        <div key={k} className="rounded-xl bg-white/[0.03] border border-white/[0.05] p-3">
+                                                            <p className="text-[9px] text-purple-400/40 uppercase tracking-widest mb-0.5">{k}</p>
+                                                            <p className="text-sm text-gray-300 font-medium">{v}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                            )}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
-
         </main>
     );
 }

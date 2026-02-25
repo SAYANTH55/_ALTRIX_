@@ -6,8 +6,8 @@ const inter = Inter({ subsets: ["latin"] });
 const orbitron = Orbitron({ subsets: ["latin"], variable: "--font-orbitron" });
 
 export const metadata: Metadata = {
-  title: "Sentic | Context-Aware Text Humanizer",
-  description: "Transform robotic AI text into authentic human writing.",
+  title: "ALTRIX | Intelligence, Amplified",
+  description: "The AI-powered suite for writing, research, and discovery. Humanize text, analyze papers, and explore knowledge — all in one platform.",
 };
 
 export default function RootLayout({

@@ -1,144 +1,98 @@
-import torch
-from transformers import BertTokenizer, BertForMaskedLM
-import random
+"""
+SENTIC — BERT Pragmatic Marker Injector (Stage 3)
+─────────────────────────────────────────────────
+Replaces the old BERT MLM synonym-swap loop.
+
+Why the old approach was wrong:
+  BERT Masked LM fills masked positions with the most *probable* token —
+  which is exactly what AI detectors look for (low perplexity).
+  Token-level synonym replacement creates a "Frankenstein" text that
+  raises, not lowers, detection scores.
+
+New role:
+  After Groq's Stages 1 & 2, this module walks the sentence list and
+  probabilistically prepends natural human pragmatic markers to sentences
+  that lack any discourse signal. Pragmatic markers carry near-zero
+  semantic weight but high stylistic fingerprint — making text appear
+  more human without distorting meaning.
+"""
+
 import re
+import random
+import torch
+from transformers import BertTokenizer, BertModel
 
-# Load pre-trained model tokenizer (vocabulary)
+# ── Marker pools ────────────────────────────────────────────────────────────
+MARKERS_HEDGING     = ["Admittedly,", "To be fair,", "That said,", "In fairness,"]
+MARKERS_EMPHASIS    = ["Frankly,", "Honestly,", "Put simply,", "In plain terms,"]
+MARKERS_TRANSITION  = ["In practice,", "The catch is,", "What this means —"]
+MARKERS_CONTRAST    = ["Oddly enough,", "Against expectations,", "Counterintuitively,"]
+MARKERS_CONSEQUENCE = ["As a result,", "The consequence is clear:", "So it follows that"]
+
+ALL_MARKERS = (
+    MARKERS_HEDGING + MARKERS_EMPHASIS +
+    MARKERS_TRANSITION + MARKERS_CONTRAST + MARKERS_CONSEQUENCE
+)
+
+# Signals that a sentence already has a human marker — skip it
+EXISTING_SIGNALS = [
+    "admittedly", "frankly", "honestly", "in practice", "oddly",
+    "that said", "to be fair", "in fact", "interestingly", "notably",
+    "but here", "the catch", "which leads", "as a result", "therefore",
+    "however", "although", "while ", "despite", "because", "since ",
+    "—", ";"
+]
+
+# ── Load BERT (lightweight — only the encoder, no MLM head needed) ──────────
 try:
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-    model = BertForMaskedLM.from_pretrained('bert-base-uncased')
-    model.eval()
-    print("BERT model loaded successfully.")
+    _tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+    _model = BertModel.from_pretrained("bert-base-uncased")
+    _model.eval()
+    print("BERT Pragmatic Marker Injector: model loaded ✓")
+    BERT_AVAILABLE = True
 except Exception as e:
-    print(f"Error loading BERT model: {e}")
-    tokenizer = None
-    model = None
+    print(f"BERT load warning: {e} — rule-only mode active.")
+    BERT_AVAILABLE = False
 
-def clean_text_artifacts(text):
-    """
-    Removes specific unicode characters that often flag AI content or look robotic.
-    """
-    # Replace em-dashes and en-dashes with hyphens or spaces
-    text = text.replace('—', ' - ').replace('–', '-')
-    # Replace smart quotes with straight quotes
-    text = text.replace('“', '"').replace('”', '"').replace("‘", "'").replace("’", "'")
-    # Remove zero-width spaces and other invisible characters
-    text = re.sub(r'[\u200b\u200c\u200d\uFEFF]', '', text)
-    return text
 
-def prune_ai_vocabulary(text):
+def _needs_marker(sentence: str) -> bool:
     """
-    Mechanism 4: Vocabulary Pruning
-    Identifies and masks 'Hallmark AI Words' to force BERT to replace them.
+    True if the sentence qualifies for marker injection:
+    - More than 6 words (fragments look fine without markers)
+    - First 60 chars contain none of the existing signal strings
     """
-    ai_words = [
-        "delve", "tapestry", "pivotal", "comprehensive", "foster", 
-        "underscore", "landscape", "intricate", "testament", "realm",
-        "democratize", "game-changer", "unleash"
-    ]
-    
-    # We don't mask here directly because tokenization is complex,
-    # but we can return the list of words to prioritize for masking in the loop
-    return ai_words
+    s = sentence.strip().lower()
+    if len(s.split()) < 7:
+        return False
+    prefix = s[:60]
+    return not any(sig in prefix for sig in EXISTING_SIGNALS)
 
-def enforce_style(text):
-    """
-    Mechanism 5: Explicit Style Definition
-    Enforces constraints like 'No Contractions'.
-    """
-    # Expand contractions
-    terminations = [
-        (r"won't", "will not"),
-        (r"can't", "cannot"),
-        (r"n't", " not"),
-        (r"'re", " are"),
-        (r"'s", " is"), # Context dependent, but safe for 'it's' -> 'it is' usually
-        (r"'d", " would"),
-        (r"'ll", " will"),
-        (r"'t", " not"),
-        (r"'ve", " have"),
-        (r"'m", " am")
-    ]
-    for pattern, repl in terminations:
-        text = re.sub(pattern, repl, text, flags=re.IGNORECASE)
-    return text
 
-def humanize_text_bert(text, iterations=4, mask_prob=0.30):
+def inject_pragmatic_markers(text: str, injection_rate: float = 0.28) -> str:
     """
-    Rewrites text using BERT Masked Language Modeling to introduce human-like variations.
-    Aggressive mode: Higher mask probability and more iterations.
+    Walk sentences. For each eligible sentence, with probability
+    `injection_rate`, prepend a randomly chosen pragmatic marker.
+    Caps injections at ~25% of total sentences to avoid over-engineering.
     """
-    if not model or not tokenizer:
-        return text + " [Error: Model not loaded]"
+    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+    cap = max(1, len(sentences) // 4)
+    injected = 0
+    result = []
 
-    # Pre-clean text (Sanitization)
-    text = clean_text_artifacts(text)
-    
-    # Enforce Style (No Contractions)
-    text = enforce_style(text)
-    
-    # Get AI words to target
-    ai_words_to_prune = prune_ai_vocabulary(text)
-
-    # Split into sentences to process manageable chunks
-    sentences = re.split(r'(?<=[.!?]) +', text)
-    humanized_sentences = []
-
-    for sentence in sentences:
-        if len(sentence.strip()) < 5:
-            humanized_sentences.append(sentence)
+    for s in sentences:
+        s = s.strip()
+        if not s:
             continue
-            
-        current_sentence = sentence
-        
-        for _ in range(iterations):
-            inputs = tokenizer(current_sentence, return_tensors="pt")
-            input_ids = inputs["input_ids"]
-            labels = inputs["input_ids"].clone()
+        if injected < cap and _needs_marker(s) and random.random() < injection_rate:
+            marker = random.choice(ALL_MARKERS)
+            # Lowercase the first letter of the original sentence
+            s = marker + " " + s[0].lower() + s[1:]
+            injected += 1
+        result.append(s)
 
-            # Create random mask
-            # Randomly mask 30% of tokens (excluding CLS/SEP) for higher entropy
-            seq_len = input_ids.shape[1]
-            for i in range(1, seq_len - 1): # Skip CLS and SEP
-                token_id = input_ids[0][i].item()
-                token_word = tokenizer.decode([token_id]).strip().lower()
-                
-                # Check if it's a hallucinated/AI word -> Force Mask
-                is_ai_word = any(w in token_word for w in ai_words_to_prune)
-                
-                if (random.random() < mask_prob) or is_ai_word:
-                    input_ids[0][i] = tokenizer.mask_token_id
+    return " ".join(result)
 
-            with torch.no_grad():
-                outputs = model(input_ids)
-                predictions = outputs.logits
 
-            # Decode suggestions
-            for i in range(1, seq_len - 1):
-                if input_ids[0][i] == tokenizer.mask_token_id:
-                    # Get top 30 predictions (Maximal search space for Lexical Diversity)
-                    top_k_indices = torch.topk(predictions[0, i], 30).indices.tolist()
-                    
-                    # Select a random word from top K to introduce variety (temperature-like)
-                    # We avoid the original word if possible
-                    original_token_id = labels[0][i].item()
-                    
-                    candidates = [idx for idx in top_k_indices if idx != original_token_id]
-                    
-                    if candidates:
-                        selected_id = random.choice(candidates) # Pick one diverse option
-                        input_ids[0][i] = selected_id
-                    else:
-                        input_ids[0][i] = original_token_id # Revert if no good alternative
-
-            current_sentence = tokenizer.decode(input_ids[0], skip_special_tokens=True)
-            
-            # Post-processing to fix punctuation spacing often introduced by tokenizer decode
-            current_sentence = re.sub(r'\s+([.,!?])', r'\1', current_sentence)
-            # Fix ' s ' to 's (e.g., it ' s -> it's)
-            current_sentence = current_sentence.replace(" ' s ", "'s ")
-            current_sentence = current_sentence.replace(" ' t ", "'t ")
-
-        humanized_sentences.append(current_sentence)
-
-    return " ".join(humanized_sentences)
+# ── Legacy shim — keeps fastapi_app.py import working ───────────────────────
+def humanize_text_bert(text: str) -> str:
+    return inject_pragmatic_markers(text)

@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import { parsePdf, parseDocx, parseTxt } from "@/lib/file-processing";
+import UnifiedHistorySidebar, { addAlamixHistory } from "@/components/UnifiedHistorySidebar";
 
 // Types for Academic Results
 interface AcademicResult {
@@ -186,6 +187,12 @@ export default function AlamixPage() {
             const academicData = await response.json();
 
             setResult(academicData);
+            // Save to history
+            addAlamixHistory(
+                docToProcess.name,
+                academicData?.paperOverview?.title || docToProcess.name,
+                academicData?.paperOverview?.authors || ""
+            );
             setIsProcessing(false);
         } catch (err: unknown) {
             console.error(err);
@@ -322,9 +329,11 @@ export default function AlamixPage() {
     };
 
     return (
-        <main className="min-h-screen flex flex-col items-center p-8 relative overflow-x-hidden">
+        <main className="min-h-screen flex flex-col items-center p-4 relative overflow-x-hidden">
+            <UnifiedHistorySidebar tool="alamix" />
             {/* Base Background Layer */}
             <div className="fixed inset-0 bg-[#020617] -z-20"></div>
+
 
             {/* Background Orbs */}
             <div className="absolute top-[-10%] right-[-10%] w-[800px] h-[800px] bg-blue-900/40 rounded-full blur-[180px] -z-10 animate-pulse"></div>
@@ -337,10 +346,10 @@ export default function AlamixPage() {
                 <motion.header
                     initial={{ y: -20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
-                    className="text-center mb-16"
+                    className="text-center mb-4"
                 >
                     <div className="inline-block relative mb-4">
-                        <h1 className="text-7xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-white to-blue-400 tracking-[0.25em] font-orbitron">
+                        <h1 className="text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-white to-blue-400 tracking-[0.25em] font-orbitron">
                             ALAMIX
                         </h1>
                         <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-24 h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent"></div>
@@ -361,7 +370,7 @@ export default function AlamixPage() {
                     <motion.div
                         initial={{ scale: 0.98, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
-                        className="w-full max-w-2xl mt-10"
+                        className="w-full max-w-2xl mt-0"
                     >
                         {/* Error Message */}
                         <AnimatePresence>
@@ -395,7 +404,7 @@ export default function AlamixPage() {
                             <div className="absolute -inset-1 bg-gradient-to-r from-blue-600/20 via-indigo-600/20 to-blue-600/20 rounded-[2rem] blur-xl opacity-0 group-hover:opacity-100 transition duration-700"></div>
                             <div
                                 onClick={() => fileInputRef.current?.click()}
-                                className="relative bg-[#020617]/40 backdrop-blur-2xl border border-white/5 p-16 rounded-[2rem] flex flex-col items-center border-dashed border-2 group-hover:border-blue-500/30 transition-all cursor-pointer overflow-hidden shadow-2xl"
+                                className="relative bg-[#020617]/40 backdrop-blur-2xl border border-white/5 p-7 rounded-[2rem] flex flex-col items-center border-dashed border-2 group-hover:border-blue-500/30 transition-all cursor-pointer overflow-hidden shadow-2xl"
                             >
                                 <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-blue-500/50 to-transparent animate-scan"></div>
 
@@ -407,13 +416,13 @@ export default function AlamixPage() {
                                     accept=".pdf,.docx"
                                 />
 
-                                <div className="mb-8 p-8 rounded-full bg-blue-500/5 border border-blue-500/10 group-hover:bg-blue-500/10 group-hover:border-blue-500/30 transition-all duration-500 relative">
+                                <div className="mb-5 p-5 rounded-full bg-blue-500/5 border border-blue-500/10 group-hover:bg-blue-500/10 group-hover:border-blue-500/30 transition-all duration-500 relative">
                                     <div className="absolute inset-0 bg-blue-500/20 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                                    <Upload size={56} className="text-blue-400 relative z-10 group-hover:scale-110 transition-transform duration-500" />
+                                    <Upload size={36} className="text-blue-400 relative z-10 group-hover:scale-110 transition-transform duration-500" />
                                 </div>
 
-                                <h3 className="text-3xl font-bold text-white mb-3 tracking-tight">Analyze Document</h3>
-                                <p className="text-blue-200/50 text-center max-w-sm mb-10 text-lg font-light leading-relaxed">
+                                <h3 className="text-xl font-bold text-white mb-2 tracking-tight">Analyze Document</h3>
+                                <p className="text-blue-200/50 text-center max-w-sm mb-5 text-sm font-light leading-relaxed">
                                     Analyze PDF or Word research papers with absolute academic integrity.
                                 </p>
 

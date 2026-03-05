@@ -40,22 +40,41 @@ class KarionService:
 
             content = res.get("choices", [{}])[0].get("message", {}).get("content", "[]")
             
+            print(f"KARION: AI response received ({len(content)} chars)")
+            
             # Extract JSON from potential conversational text
             json_match = re.search(r"(\{.*\}|\[.*\])", content, re.DOTALL)
             if json_match:
                 content = json_match.group(0)
             
-            data = json.loads(content)
+            try:
+                data = json.loads(content)
+            except Exception as je:
+                print(f"KARION: JSON parse error: {je}")
+                # Try a more aggressive cleanup
+                clean_content = content.replace("```json", "").replace("```", "").strip()
+                data = json.loads(clean_content)
             
-            # Ensure it's a list
+            # Ensure it's a list of dicts
+            final_items = []
             if isinstance(data, dict):
                 # Sometimes LLM returns {"references": [...]}
                 for key in ["references", "citations", "results", "data"]:
                     if key in data and isinstance(data[key], list):
-                        return data[key]
-                return [data]
-            return data
+                        final_items = data[key]
+                        break
+                if not final_items:
+                    final_items = [data]
+            elif isinstance(data, list):
+                final_items = data
+            
+            # Final sanity check: filter out non-dict items
+            final_items = [item for item in final_items if isinstance(item, dict)]
+            
+            print(f"KARION: Successfully extracted {len(final_items)} references")
+            return final_items
         except Exception as e:
+            print(f"KARION: Metadata extraction critical error: {e}")
             return []
 
     async def verify_metadata(self, item: Dict[str, Any], mode: str = "standard") -> Dict[str, Any]:
@@ -151,12 +170,23 @@ class KarionService:
                 else:
                     authors.append({"family": a})
 
+            # Extract year safely
+            year_val = None
+            if item.get("year"):
+                try:
+                    # Extracts the first 4-digit number
+                    year_match = re.search(r"\d{4}", str(item["year"]))
+                    if year_match:
+                        year_val = int(year_match.group(0))
+                except:
+                    pass
+
             csl_item = {
                 "id": f"ref{i}",
                 "type": "article-journal" if item.get("journal") else "paper-conference",
                 "title": item.get("title"),
                 "container-title": item.get("journal") or item.get("conference"),
-                "issued": {"date-parts": [[int(item.get("year"))]]} if item.get("year") else None,
+                "issued": {"date-parts": [[year_val]]} if year_val else None,
                 "author": authors,
                 "DOI": item.get("doi"),
                 "URL": item.get("url"),
@@ -179,6 +209,10 @@ class KarionService:
                     "vancouver": "vancouver"
                 }
                 actual_style = alias_map.get(style_name.lower(), "ieee")
+                
+                # Fix: Initialize bib_source
+                bib_source = CiteProcJSON(csl_items)
+                
                 style = CitationStylesStyle(actual_style, validate=False)
                 bibliography = CitationStylesBibliography(style, bib_source, formatter=None)
                 
@@ -188,7 +222,7 @@ class KarionService:
                 
                 formatted_list = [str(item) for item in bibliography.bibliography()]
             except Exception as e:
-                print(f"KARION CiteProc failed (likely missing style): {e}. Using fallback.")
+                print(f"KARION CiteProc failed: {e}. Using fallback.")
                 formatted_list = self._manual_format(items, style_name)
 
             # Generate BibTeX manually for reliability

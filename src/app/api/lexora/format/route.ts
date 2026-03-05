@@ -80,30 +80,58 @@ FORMAT SPECIFIC INSTRUCTIONS:
 
 Return the mapped content in a structured way that fits perfectly into the template.`;
 
-        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${GROQ_API_KEY}`,
-            },
-            body: JSON.stringify({
-                model: "llama-3.3-70b-versatile",
-                messages: [
-                    { role: "system", content: systemPrompt },
-                    { role: "user", content: `Process this research content into '${format}' structure:\n\n${text.substring(0, 10000)}` },
-                ],
-                temperature: 0.1,
-                max_tokens: 4096,
-            }),
-        });
-
-        if (!res.ok) {
-            const err = await res.text();
-            throw new Error(`Groq error: ${err}`);
+        // ── Chunked Processing ──────────────────────────────────────────────
+        // Split the paper into ~800-word chunks to avoid token limits.
+        // Each chunk is converted to LaTeX independently, then concatenated.
+        const words = text.split(/\s+/);
+        const CHUNK_SIZE = 800; // words per chunk
+        const chunks: string[] = [];
+        for (let i = 0; i < words.length; i += CHUNK_SIZE) {
+            chunks.push(words.slice(i, i + CHUNK_SIZE).join(" "));
         }
 
-        const data = await res.json();
-        let bodyContent = data.choices[0]?.message?.content || "";
+        const latexChunks: string[] = [];
+        for (let i = 0; i < chunks.length; i++) {
+            const isFirst = i === 0;
+            const chunkPrompt = isFirst
+                ? `Convert this research text to ${format} LaTeX. Extract Title, Abstract, and all sections. Return ONLY LaTeX body content:\n\n${chunks[i]}`
+                : `Continue converting the following research text to ${format} LaTeX sections. DO NOT skip or summarize ANY content — include every paragraph verbatim in LaTeX. Return ONLY continuation of LaTeX body:\n\n${chunks[i]}`;
+
+            const chunkRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${GROQ_API_KEY}`,
+                },
+                body: JSON.stringify({
+                    model: "llama-3.3-70b-versatile",
+                    messages: [
+                        { role: "system", content: systemPrompt },
+                        { role: "user", content: chunkPrompt },
+                    ],
+                    temperature: 0.1,
+                    max_tokens: 4096,
+                }),
+            });
+
+            if (!chunkRes.ok) {
+                const err = await chunkRes.text();
+                console.warn(`Chunk ${i + 1} failed: ${err} — using raw text fallback`);
+                latexChunks.push(`% [Chunk ${i + 1} failed — raw]\n${chunks[i]}`);
+                continue;
+            }
+
+            const chunkData = await chunkRes.json();
+            let chunkLatex = chunkData.choices[0]?.message?.content || "";
+            chunkLatex = chunkLatex
+                .replace(/```latex/gi, "")
+                .replace(/```/g, "")
+                .replace(/\\end\{document\}/g, "") // strip premature \end{document}
+                .trim();
+            latexChunks.push(chunkLatex);
+        }
+
+        let bodyContent = latexChunks.join("\n\n");
 
         // Strip any accidental markdown fences
         bodyContent = bodyContent.replace(/```latex/g, "").replace(/```/g, "").trim();

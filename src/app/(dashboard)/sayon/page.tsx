@@ -45,13 +45,39 @@ function MermaidRenderer({ syntax }: { syntax: string }) {
         const render = async () => {
             if (!syntax) return;
             try {
-                // Pre-processing syntax to remove common AI hallucination characters
-                const cleanSyntax = syntax
+                let cleanSyntax = syntax
                     .replace(/&quot;/g, '"')
                     .replace(/\\n/g, '\n')
                     .trim();
 
-                // Unique ID for each render to avoid conflicts
+                // Advanced Extraction: Find the actual Mermaid header and cut off everything before it
+                const headers = ["graph", "mindmap", "sequenceDiagram", "stateDiagram", "classDiagram", "erDiagram", "gantt", "pie", "journey"];
+                let foundHeader = false;
+                for (const h of headers) {
+                    const idx = cleanSyntax.toLowerCase().indexOf(h);
+                    if (idx !== -1) {
+                        cleanSyntax = cleanSyntax.substring(idx);
+                        foundHeader = true;
+                        break;
+                    }
+                }
+
+                cleanSyntax = cleanSyntax
+                    // Fix hallucination patterns (arrows with extra >)
+                    .replace(/-->\s*>/g, '-->')
+                    .replace(/->>\s*>/g, '->>')
+                    .replace(/\|>\s?/g, '--> ')
+                    // Strip bare -->| or ->>| only when NOT followed by a closing |
+                    // Valid edge labels: -->|text| must be preserved
+                    .replace(/-->\|(?![^|\n]*\|)/g, '--> ')
+                    .replace(/->>\|(?![^|\n]*\|)/g, '->> ')
+                    // Subgraph closing
+                    .replace(/subgraph\s+(.*?)\n([\s\S]*?)(?=\n\S|$)/gm, (match) => {
+                        if (!match.includes('end')) return match + '\nend';
+                        return match;
+                    })
+                    .trim();
+
                 const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
 
                 const { svg } = await mermaid.render(id, cleanSyntax);
@@ -100,20 +126,31 @@ export default function SayonPage() {
     const [advancedMode, setAdvancedMode] = useState(false);
     const [activeTab, setActiveTab] = useState<"Preview" | "Code">("Preview");
 
-    const handleVisualize = async () => {
-        if (!text.trim()) return;
+    const handleVisualize = async (overrides?: { type?: DiagramType, direction?: Direction }) => {
+        const activeText = text.trim();
+        if (!activeText) return;
+
+        const activeType = overrides?.type || type;
+        const activeDirection = overrides?.direction || direction;
+
         setLoading(true);
         try {
             const res = await fetch("/api/sayon/visualize", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text, type, direction, complexity }),
+                body: JSON.stringify({
+                    text: activeText,
+                    type: activeType,
+                    direction: activeDirection,
+                    complexity
+                }),
             });
             const data = await res.json();
             if (data.error) throw new Error(data.error);
             setSyntax(data.syntax);
         } catch (err: any) {
-            alert(err.message);
+            console.error("Visualization Error:", err);
+            // alert(err.message); // Quieter errors for reactive UI
         } finally {
             setLoading(false);
         }
@@ -182,7 +219,12 @@ export default function SayonPage() {
                             <span className="text-[10px] font-bold tracking-[0.4em] uppercase text-[#FF2E4D]/50">INPUT</span>
                             <div className="flex bg-white/[0.04] p-1 rounded-full border border-white/[0.06]">
                                 {["Flowchart", "Mind Map", "System Diagram", "Research Map"].map((t) => (
-                                    <button key={t} onClick={() => setType(t as DiagramType)}
+                                    <button key={t}
+                                        onClick={() => {
+                                            const newType = t as DiagramType;
+                                            setType(newType);
+                                            if (text.trim()) handleVisualize({ type: newType });
+                                        }}
                                         className={`px-4 py-1.5 rounded-full text-[10px] font-bold tracking-wider transition-all duration-300
                                             ${type === t ? "bg-[#FF2E4D] text-white shadow-[0_0_15px_rgba(255,46,77,0.4)]" : "text-white/40 hover:text-white/60"}`}>
                                         {t}
@@ -234,7 +276,7 @@ export default function SayonPage() {
                     <motion.button
                         whileHover={{ y: -3, scale: 1.01 }}
                         whileTap={{ scale: 0.98 }}
-                        onClick={handleVisualize}
+                        onClick={() => handleVisualize()}
                         disabled={loading || !text.trim()}
                         className="relative px-12 py-5 rounded-2xl font-orbitron font-black tracking-[0.2em] text-sm text-white overflow-hidden disabled:opacity-30 disabled:grayscale transition-all duration-500 glow-pulse group">
                         <div className="absolute inset-0 bg-gradient-to-br from-[#FF2E4D] to-[#8a0f21] group-hover:from-[#ff4d68] group-hover:to-[#b0142b] transition-colors" />
@@ -312,7 +354,7 @@ export default function SayonPage() {
                                             <Download size={16} className="text-[#FF2E4D]/60" />
                                             <span className="text-xs font-medium text-white/70">Download PNG</span>
                                         </button>
-                                        <button onClick={handleVisualize}
+                                        <button onClick={() => handleVisualize()}
                                             className="w-full flex items-center gap-3 px-5 py-4 rounded-2xl bg-[#FF2E4D]/10 border border-[#FF2E4D]/20 hover:border-[#FF2E4D]/50 transition-all text-[#FF2E4D]">
                                             <RefreshCw size={16} />
                                             <span className="text-xs font-bold uppercase tracking-widest">Regenerate</span>

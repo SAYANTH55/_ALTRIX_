@@ -48,65 +48,153 @@ function applyTextProcessing(text: string, settings: TextProcessingSettings): st
     return out;
 }
 
-// ─── Banned AI-isms (for client-side AI score) ───────────────────────────────
+// ─── Banned AI-isms (Signal 7: Phrase Fingerprint) ───────────────────────────
 const BANNED = [
     "comprehensive", "foster", "delve", "tap into", "multifaceted", "underscores",
     "underscore", "testament", "realm", "pivotal", "intricate", "democratize",
     "game-changer", "unleash", "leverage", "holistic", "furthermore", "moreover",
-    "in addition", "additionally",
+    "in addition", "additionally", "in conclusion", "to summarize", "to sum up",
+    "first and foremost", "it is important to note", "it is worth noting",
+    "needless to say", "in today's world", "cutting-edge", "groundbreaking",
+    "state-of-the-art", "revolutionary", "transformative", "paradigm shift",
+    "utilize", "facilitate", "streamline", "robust", "seamless", "innovative",
+    "empower", "it is clear that", "it is evident that", "plays a crucial role",
+    "a wide range of", "due to the fact that", "in order to",
 ];
 
-// ─── AI Score Estimator ──────────────────────────────────────────────────────
-function estimateAiScore(text: string): { level: "low" | "medium" | "high"; score: number; detail: string } {
-    if (!text.trim()) return { level: "low", score: 0, detail: "No output yet" };
+// ─── 5-Signal AI Score Estimator (mirrors real detector logic) ───────────────
+interface ScoreBreakdown {
+    cv: number; ttr: number; startDiv: number; bannedHits: number; richness: number;
+    cvScore: number; ttrScore: number; startScore: number; bannedScore: number; richnessScore: number;
+}
+function estimateAiScore(text: string): {
+    level: "low" | "medium" | "high"; score: number; detail: string; breakdown: ScoreBreakdown;
+} {
+    const empty = {
+        level: "low" as const, score: 0, detail: "No output yet",
+        breakdown: { cv: 0, ttr: 0, startDiv: 0, bannedHits: 0, richness: 0, cvScore: 0, ttrScore: 0, startScore: 0, bannedScore: 0, richnessScore: 0 }
+    };
+    if (!text.trim()) return empty;
+
     const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 4);
-    if (sentences.length < 2) return { level: "medium", score: 50, detail: "Too short to analyse" };
+    if (sentences.length < 2) return {
+        level: "medium", score: 55, detail: "Too short to analyse",
+        breakdown: { cv: 0, ttr: 0, startDiv: 0, bannedHits: 0, richness: 0, cvScore: 0, ttrScore: 0, startScore: 0, bannedScore: 0, richnessScore: 0 }
+    };
+
+    // Signal 2: Burstiness CV
     const lengths = sentences.map(s => s.trim().split(/\s+/).length);
     const mean = lengths.reduce((a, b) => a + b, 0) / lengths.length;
     const variance = lengths.reduce((s, l) => s + Math.pow(l - mean, 2), 0) / lengths.length;
     const cv = Math.sqrt(variance) / mean;
+    // CV penalty: < 0.4 adds big penalty, > 0.75 = no penalty
+    const cvScore = cv < 0.40 ? 35 : cv < 0.60 ? 18 : cv < 0.75 ? 8 : 0;
+
+    // Signal 6: Type-Token Ratio
+    const allWords = text.toLowerCase().match(/\b[a-z]+\b/g) || [];
+    const ttr = allWords.length > 0 ? new Set(allWords).size / allWords.length : 0;
+    // TTR penalty: < 0.55 = too repetitive
+    const ttrScore = ttr < 0.50 ? 25 : ttr < 0.60 ? 14 : ttr < 0.70 ? 6 : 0;
+
+    // Signal 3: Sentence-start diversity
+    const starters = sentences.map(s => s.trim().toLowerCase().split(/\s+/)[0] || "");
+    const uniqueStarters = new Set(starters).size;
+    const startDiv = uniqueStarters / starters.length;
+    // startDiv penalty: < 0.60 = too uniform
+    const startScore = startDiv < 0.40 ? 20 : startDiv < 0.60 ? 12 : startDiv < 0.75 ? 5 : 0;
+
+    // Signal 7: Banned AI-isms
     const lower = text.toLowerCase();
-    const hits = BANNED.filter(w => lower.includes(w)).length;
-    const richness = Math.min((text.match(/—/g) || []).length + (text.match(/\(/g) || []).length + (text.match(/;/g) || []).length, 6);
-    let score = 100;
-    score -= Math.min(cv * 60, 50);
-    score += hits * 12;
-    score -= richness * 6;
-    score = Math.max(0, Math.min(100, Math.round(score)));
-    const level = score < 35 ? "low" : score < 65 ? "medium" : "high";
+    const bannedHits = BANNED.filter(w => lower.includes(w)).length;
+    const bannedScore = bannedHits * 10;
+
+    // Signal 8: Punctuation richness
+    const richness = Math.min(
+        (text.match(/—/g) || []).length +
+        (text.match(/\(/g) || []).length +
+        (text.match(/;/g) || []).length +
+        (text.match(/\?/g) || []).length +
+        (text.match(/\.{3}/g) || []).length, 10
+    );
+    const richnessScore = richness < 2 ? 12 : richness < 4 ? 6 : richness < 6 ? 2 : 0;
+
+    const score = Math.max(0, Math.min(100, Math.round(cvScore + ttrScore + startScore + bannedScore + richnessScore)));
+    const level = score < 30 ? "low" : score < 58 ? "medium" : "high";
+
     const detail = [
-        `Burstiness CV: ${cv.toFixed(2)}`,
-        hits > 0 ? `⚠ ${hits} AI-ism(s)` : "✓ No banned words",
-        `Punctuation richness: ${richness}`,
+        `CV: ${cv.toFixed(2)}${cv >= 0.75 ? " ✓" : " ⚠"}`,
+        `TTR: ${ttr.toFixed(2)}${ttr >= 0.70 ? " ✓" : " ⚠"}`,
+        `Starts: ${Math.round(startDiv * 100)}%${startDiv >= 0.75 ? " ✓" : " ⚠"}`,
+        bannedHits > 0 ? `⚠ ${bannedHits} AI-ism` : "✓ Clean",
+        `Punct: ${richness}`,
     ].join(" · ");
-    return { level, score, detail };
+
+    const breakdown: ScoreBreakdown = { cv, ttr, startDiv, bannedHits, richness, cvScore, ttrScore, startScore, bannedScore, richnessScore };
+    return { level, score, detail, breakdown };
 }
 
-// ─── AI Score Badge ──────────────────────────────────────────────────────────
+// ─── AI Score Badge (5-Signal) ───────────────────────────────────────────────
 function AiScoreBadge({ text }: { text: string }) {
-    const { level, score, detail } = useMemo(() => estimateAiScore(text), [text]);
+    const { level, score, detail, breakdown } = useMemo(() => estimateAiScore(text), [text]);
+    const [showBreakdown, setShowBreakdown] = useState(false);
     const colours: Record<string, string> = {
         low: "from-emerald-500/20 to-emerald-600/10 border-emerald-500/30 text-emerald-300",
-        medium: "from-amber-500/20  to-amber-600/10  border-amber-500/30  text-amber-300",
-        high: "from-red-500/20    to-red-600/10    border-red-500/30    text-red-300",
+        medium: "from-amber-500/20 to-amber-600/10 border-amber-500/30 text-amber-300",
+        high: "from-red-500/20 to-red-600/10 border-red-500/30 text-red-300",
     };
     const icons = { low: "🟢", medium: "🟡", high: "🔴" };
-    const labels = { low: "Low AI Signal", medium: "Medium AI Signal", high: "High AI Signal" };
+    const labels = { low: "Low AI Signal", medium: "Medium Risk", high: "High AI Signal" };
+    const signals = [
+        { label: "Burstiness (CV)", value: breakdown.cv.toFixed(2), target: "≥0.75", ok: breakdown.cv >= 0.75, penalty: breakdown.cvScore },
+        { label: "Lexical Div (TTR)", value: breakdown.ttr.toFixed(2), target: "≥0.70", ok: breakdown.ttr >= 0.70, penalty: breakdown.ttrScore },
+        { label: "Start Diversity", value: `${Math.round(breakdown.startDiv * 100)}%`, target: "≥75%", ok: breakdown.startDiv >= 0.75, penalty: breakdown.startScore },
+        { label: "AI-isms", value: `${breakdown.bannedHits} found`, target: "= 0", ok: breakdown.bannedHits === 0, penalty: breakdown.bannedScore },
+        { label: "Punct Richness", value: `${breakdown.richness}`, target: "≥6", ok: breakdown.richness >= 6, penalty: breakdown.richnessScore },
+    ];
     return (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
             className={`w-full rounded-2xl bg-gradient-to-br ${colours[level]} border backdrop-blur-xl p-4`}>
             <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                     <Activity size={13} className="opacity-70" />
-                    <span className="text-[9px] font-bold tracking-[0.4em] uppercase opacity-60">AI Score Estimator</span>
+                    <span className="text-[9px] font-bold tracking-[0.4em] uppercase opacity-60">AI Signal Analyser</span>
                 </div>
-                <span className="text-sm font-bold font-mono">{icons[level]} {labels[level]}</span>
+                <div className="flex items-center gap-3">
+                    <span className="text-sm font-bold font-mono">{icons[level]} {labels[level]}</span>
+                    <button onClick={() => setShowBreakdown(p => !p)}
+                        className="text-[9px] tracking-widest uppercase opacity-50 hover:opacity-100 transition-opacity">
+                        {showBreakdown ? "hide" : "details"}
+                    </button>
+                </div>
             </div>
             <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden mb-2">
                 <motion.div initial={{ width: 0 }} animate={{ width: `${score}%` }} transition={{ duration: 0.8, ease: "easeOut" }}
                     className={`h-full rounded-full ${level === "low" ? "bg-emerald-400" : level === "medium" ? "bg-amber-400" : "bg-red-400"}`} />
             </div>
             <p className="text-[10px] opacity-60 font-mono">{detail}</p>
+            <AnimatePresence>
+                {showBreakdown && (
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }} className="overflow-hidden mt-3 border-t border-white/10 pt-3">
+                        <div className="grid grid-cols-1 gap-1.5">
+                            {signals.map(sig => (
+                                <div key={sig.label} className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[10px]">{sig.ok ? "✅" : "⚠️"}</span>
+                                        <span className="text-[10px] font-mono opacity-70">{sig.label}</span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-[10px] font-mono">{sig.value}</span>
+                                        <span className="text-[9px] opacity-40 font-mono">target {sig.target}</span>
+                                        {sig.penalty > 0 && <span className="text-[9px] text-red-400 font-mono">+{sig.penalty}pts</span>}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <p className="text-[9px] opacity-30 font-mono mt-2 text-right">Total AI-risk score: {score}/100 (lower = more human)</p>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </motion.div>
     );
 }
@@ -181,11 +269,14 @@ function TextSettingsModal({ settings, onChange, onClose }: {
                 onClick={e => e.stopPropagation()}
                 className="relative bg-[#0e0616]/95 border border-purple-500/25 p-7 rounded-3xl w-full max-w-sm shadow-2xl shadow-black/60 backdrop-blur-2xl">
                 <button onClick={onClose} className="absolute top-5 right-5 text-gray-500 hover:text-white transition-colors"><X size={16} /></button>
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20">
-                        <Settings size={18} className="text-purple-300" />
+                <div className="flex items-center gap-3 mb-5">
+                    <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                        <Settings size={18} className="text-amber-300" />
                     </div>
-                    <h3 className="text-base font-bold text-white tracking-wide">Text Processing Settings</h3>
+                    <div>
+                        <h3 className="text-base font-bold text-white tracking-wide">Output Cleaner</h3>
+                        <p className="text-[10px] text-amber-400/70 mt-0.5">⚠ These strip humanization markers. AI score is measured on raw output.</p>
+                    </div>
                 </div>
                 <div className="divide-y divide-white/[0.05]">
                     <ToggleRow label="Remove hidden unicode characters" value={settings.removeUnicode} onChange={set("removeUnicode")} />
@@ -551,27 +642,30 @@ export default function SenticPage() {
                     <GlassSelect label="Entropy Level" value={entropy} onChange={setEntropy} options={entropyOpts} />
                     {/* Settings button */}
                     <div className="flex-shrink-0">
-                        <p className="text-[9px] font-bold tracking-[0.3em] uppercase text-purple-400/50 mb-1.5 pl-1">Settings</p>
+                        <p className="text-[9px] font-bold tracking-[0.3em] uppercase text-purple-400/50 mb-1.5 pl-1">Output Cleaner</p>
                         <button onClick={() => setShowSettings(true)}
-                            className="relative flex items-center gap-2 px-4 py-3 rounded-2xl bg-white/[0.04] border border-white/10 hover:border-purple-500/30 hover:bg-white/[0.07] backdrop-blur-md transition-all duration-200">
-                            <Settings size={15} className="text-purple-400/60" />
-                            <span className="text-sm text-white/70 font-medium whitespace-nowrap">Text Settings</span>
+                            className="relative flex items-center gap-2 px-4 py-3 rounded-2xl bg-white/[0.04] border border-white/10 hover:border-amber-500/30 hover:bg-white/[0.07] backdrop-blur-md transition-all duration-200">
+                            <Settings size={15} className="text-amber-400/60" />
+                            <span className="text-sm text-white/70 font-medium whitespace-nowrap">Text Clean</span>
                             {activeSettingsCount > 0 && (
-                                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-purple-500 text-white text-[10px] font-bold flex items-center justify-center">
+                                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center">
                                     {activeSettingsCount}
                                 </span>
                             )}
                         </button>
+                        {activeSettingsCount > 0 && (
+                            <p className="text-[9px] text-amber-400/60 tracking-widest mt-1 pl-1">⚠ strips human markers</p>
+                        )}
                     </div>
                 </motion.div>
 
                 {/* Entropy descriptor */}
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }} className="w-full px-1">
                     <p className="text-[10px] text-purple-400/40 tracking-widest font-mono">
-                        {entropy === "Low" && "↳ Temperature 0.75 · Subtle restructuring · Safe for academic tone"}
-                        {entropy === "Medium" && "↳ Temperature 0.88 · Balanced burstiness · Good general use"}
-                        {entropy === "High" && "↳ Temperature 0.95 · Aggressive variance · Strong anti-detection"}
-                        {entropy === "Max" && "↳ Temperature 1.02 · Maximum unpredictability · Use with care"}
+                        {entropy === "Low" && "↳ Temperature 0.82 · top_p 0.90 · Subtle restructuring · Safe for academic tone"}
+                        {entropy === "Medium" && "↳ Temperature 0.92 · top_p 0.95 · Balanced burstiness · Good general use"}
+                        {entropy === "High" && "↳ Temperature 1.00 · top_p 0.95 · Aggressive variance · Strong anti-detection"}
+                        {entropy === "Max" && "↳ Temperature 1.05 · top_p 0.97 · Maximum unpredictability · Use with care"}
                     </p>
                 </motion.div>
 
@@ -636,8 +730,8 @@ export default function SenticPage() {
                                 </div>
                             </div>
 
-                            {/* AI Score Estimator */}
-                            <AiScoreBadge text={displayedText} />
+                            {/* AI Score Estimator — always reads RAW humanized text, not post-processed */}
+                            <AiScoreBadge text={result.humanizedText} />
 
                             {/* Pipeline Log */}
                             {result.explainability && (

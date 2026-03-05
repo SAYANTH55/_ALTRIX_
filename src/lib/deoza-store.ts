@@ -3,7 +3,7 @@ import { persist } from "zustand/middleware";
 
 export interface UnifiedPaper {
     id: string;
-    source: "semantic" | "arxiv";
+    source: "semantic" | "arxiv" | "crossref";
     title: string;
     authors: string[];
     year: number | null;
@@ -16,7 +16,7 @@ export interface UnifiedPaper {
 }
 
 export interface SearchFilters {
-    source: "all" | "semantic" | "arxiv";
+    source: "all" | "semantic" | "arxiv" | "crossref";
     openAccessOnly: boolean;
     yearFrom: number | null;
     yearTo: number | null;

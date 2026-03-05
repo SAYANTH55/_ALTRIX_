@@ -33,13 +33,15 @@ export default function LexoraPage() {
     const [latex, setLatex] = useState("");
     const [activeTab, setActiveTab] = useState<"Preview" | "Code">("Preview");
     const [copied, setCopied] = useState(false);
+    const [extractedImages, setExtractedImages] = useState<string[]>([]);
+    const [metadata, setMetadata] = useState<any>(null);
 
     // Options
     const [options, setOptions] = useState({
         autoDetect: true,
         preserveHeadings: true,
         normalizeRefs: true,
-        extractFigures: false
+        extractFigures: true // Default to true now that it works
     });
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -47,6 +49,9 @@ export default function LexoraPage() {
         if (selected) {
             setFile(selected);
             setText(""); // Clear mock text
+            setLatex(""); // Reset previous results
+            setExtractedImages([]);
+            setMetadata(null);
         }
     };
 
@@ -60,7 +65,7 @@ export default function LexoraPage() {
             formData.append("autoDetect", options.autoDetect.toString());
             formData.append("normalizeRefs", options.normalizeRefs.toString());
 
-            const res = await fetch("http://localhost:8000/lexora/process", {
+            const res = await fetch("/api/python/lexora/process", {
                 method: "POST",
                 body: formData,
             });
@@ -72,6 +77,8 @@ export default function LexoraPage() {
 
             const data = await res.json();
             setLatex(data.latex);
+            setExtractedImages(data.extracted_images || []);
+            setMetadata(data.metadata || null);
             setActiveTab("Code"); // Switch to code to show the full result
         } catch (err: any) {
             console.error("LEXORA Error:", err);
@@ -221,6 +228,62 @@ export default function LexoraPage() {
                         </div>
                     </div>
                 </motion.div>
+
+                {/* ── METADATA & IMAGES SUMMARY ── */}
+                <AnimatePresence>
+                    {(metadata || extractedImages.length > 0) && (
+                        <motion.div
+                            initial={{ y: 20, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            className="w-full grid grid-cols-1 md:grid-cols-3 gap-6"
+                        >
+                            <div className="md:col-span-2 rounded-[2rem] bg-white/[0.02] border border-white/[0.08] p-8 backdrop-blur-3xl">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="p-2 rounded-lg bg-[#D4AF37]/10 text-[#D4AF37]">
+                                        <BookOpen size={18} />
+                                    </div>
+                                    <span className="text-[10px] font-bold tracking-[0.3em] uppercase text-[#D4AF37]/50">Detected Paper Intelligence</span>
+                                </div>
+                                <h3 className="text-xl font-bold text-white mb-3 leading-tight">{metadata?.title || "Untitled Paper"}</h3>
+                                <p className="text-xs text-white/40 leading-relaxed line-clamp-3">{metadata?.abstract || "No abstract extracted."}</p>
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                    {metadata?.authors?.map((a: string, i: number) => (
+                                        <span key={i} className="px-3 py-1 rounded-full bg-white/5 border border-white/5 text-[9px] text-white/50">{a}</span>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="rounded-[2rem] bg-white/[0.02] border border-white/[0.08] p-8 backdrop-blur-3xl flex flex-col">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="p-2 rounded-lg bg-[#D4AF37]/10 text-[#D4AF37]">
+                                        <Layers size={18} />
+                                    </div>
+                                    <span className="text-[10px] font-bold tracking-[0.3em] uppercase text-[#D4AF37]/50">Extracted Visuals</span>
+                                </div>
+                                <div className="flex-1 overflow-y-auto max-h-32 pr-2 custom-scrollbar">
+                                    {extractedImages.length > 0 ? (
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {extractedImages.map((img, i) => (
+                                                <div key={i} className="aspect-square rounded-lg bg-white/5 border border-white/5 overflow-hidden group/img relative">
+                                                    <img src={`/extracted_lexora/${img}`} alt="Extracted" className="w-full h-full object-cover opacity-60 group-hover/img:opacity-100 transition-opacity" />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="h-full flex flex-col items-center justify-center text-center opacity-30">
+                                            <Eye size={24} className="mb-2" />
+                                            <p className="text-[9px] uppercase tracking-widest">No images found</p>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="mt-4 pt-4 border-t border-white/5 flex justify-between items-center">
+                                    <span className="text-[9px] font-bold text-white/20 tracking-widest uppercase">{extractedImages.length} Visual Elements</span>
+                                    <div className="w-1.5 h-1.5 rounded-full bg-[#D4AF37] animate-pulse" />
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 {/* ── OUTPUT SECTION ── */}
                 <AnimatePresence>

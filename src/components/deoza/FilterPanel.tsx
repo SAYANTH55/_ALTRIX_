@@ -29,16 +29,16 @@ export default function FilterPanel() {
             <div>
                 <label className="text-xs text-gray-400 uppercase tracking-widest mb-2 block">Source</label>
                 <div className="flex flex-col gap-1.5">
-                    {(["all", "semantic", "arxiv"] as const).map((s) => (
+                    {(["all", "semantic", "arxiv", "crossref"] as const).map((s) => (
                         <button
                             key={s}
                             onClick={() => setFilters({ source: s })}
                             className={`text-left text-sm px-3 py-1.5 rounded-lg transition-all ${filters.source === s
-                                    ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
-                                    : "text-gray-400 hover:text-white hover:bg-white/5"
+                                ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
+                                : "text-gray-400 hover:text-white hover:bg-white/5"
                                 }`}
                         >
-                            {s === "all" ? "All Sources" : s === "semantic" ? "Semantic Scholar" : "arXiv"}
+                            {s === "all" ? "All Sources" : s === "semantic" ? "Semantic Scholar" : s === "arxiv" ? "arXiv" : "CrossRef"}
                         </button>
                     ))}
                 </div>

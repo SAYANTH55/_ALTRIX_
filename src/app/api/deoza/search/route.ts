@@ -5,7 +5,7 @@ const ARXIV_URL = "http://export.arxiv.org/api/query";
 
 interface UnifiedPaper {
     id: string;
-    source: "semantic" | "arxiv";
+    source: "semantic" | "arxiv" | "crossref";
     title: string;
     authors: string[];
     year: number | null;
@@ -15,6 +15,7 @@ interface UnifiedPaper {
     url: string;
     field: string | null;
     openAccess: boolean;
+    doi?: string;
 }
 
 function normalize(s: string) {
@@ -44,7 +45,7 @@ function scoreResult(paper: UnifiedPaper, query: string): number {
 
 const SEMANTIC_SCHOLAR_API_KEY = process.env.SEMANTIC_SCHOLAR_API_KEY || "";
 
-async function fetchSemanticScholar(query: string, limit = 15): Promise<UnifiedPaper[]> {
+async function fetchSemanticScholar(query: string, limit = 50): Promise<UnifiedPaper[]> {
     try {
         const fields = "title,authors,year,abstract,citationCount,url,venue,fieldsOfStudy,openAccessPdf";
         const headers: Record<string, string> = {};
@@ -76,6 +77,7 @@ async function fetchSemanticScholar(query: string, limit = 15): Promise<UnifiedP
             url: p.url || `https://www.semanticscholar.org/paper/${p.paperId}`,
             field: p.fieldsOfStudy?.[0] || null,
             openAccess: !!p.openAccessPdf?.url,
+            doi: p.externalIds?.DOI || null,
         }));
     } catch (err) {
         console.error("Semantic Scholar fetch failed:", err);
@@ -83,7 +85,7 @@ async function fetchSemanticScholar(query: string, limit = 15): Promise<UnifiedP
     }
 }
 
-async function fetchArxiv(query: string, limit = 15): Promise<UnifiedPaper[]> {
+async function fetchArxiv(query: string, limit = 50): Promise<UnifiedPaper[]> {
     try {
         // arXiv needs + not %20 for spaces, and we search title OR all-fields
         const q = query.trim().replace(/\s+/g, "+");
@@ -141,6 +143,37 @@ async function fetchArxiv(query: string, limit = 15): Promise<UnifiedPaper[]> {
     }
 }
 
+async function fetchCrossRef(query: string, limit = 50): Promise<UnifiedPaper[]> {
+    try {
+        const res = await fetch(
+            `https://api.crossref.org/works?query=${encodeURIComponent(query)}&rows=${limit}&select=title,author,published-print,published-online,abstract,URL,DOI,container-title,subject`,
+            { signal: AbortSignal.timeout(8000) }
+        );
+        if (!res.ok) return [];
+        const data = await res.json();
+        return (data.message?.items || []).map((p: any) => {
+            const date = p["published-print"] || p["published-online"] || p.published;
+            const year = date?.["date-parts"]?.[0]?.[0] || null;
+            return {
+                id: `crossref-${p.DOI}`,
+                source: "crossref" as const,
+                title: p.title?.[0] || "Untitled",
+                authors: (p.author || []).map((a: any) => `${a.given || ""} ${a.family || ""}`.trim()),
+                year,
+                abstract: p.abstract?.replace(/<[^>]*>/g, "") || "",
+                citations: null,
+                pdf: null,
+                url: p.URL || `https://doi.org/${p.DOI}`,
+                field: p.subject?.[0] || p["container-title"]?.[0] || null,
+                openAccess: false, // CrossRef doesn't easily signal OA in this endpoint
+                doi: p.DOI,
+            };
+        });
+    } catch {
+        return [];
+    }
+}
+
 export async function POST(req: Request) {
     try {
         const { query, filters } = await req.json();
@@ -148,12 +181,22 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Query is required" }, { status: 400 });
         }
 
-        const [semanticResults, arxivResults] = await Promise.all([
-            fetchSemanticScholar(query, 15),
-            fetchArxiv(query, 15),
+        const [semanticResults, arxivResults, crossrefResults] = await Promise.all([
+            fetchSemanticScholar(query, 50),
+            fetchArxiv(query, 50),
+            fetchCrossRef(query, 50),
         ]);
 
-        let combined: UnifiedPaper[] = [...semanticResults, ...arxivResults];
+        let combined: UnifiedPaper[] = [...semanticResults, ...arxivResults, ...crossrefResults];
+
+        // Deduplication by DOI or Title
+        const seen = new Set<string>();
+        combined = combined.filter((p) => {
+            const key = p.doi ? `doi:${p.doi.toLowerCase()}` : `title:${normalize(p.title)}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
 
         // Apply filters
         if (filters) {

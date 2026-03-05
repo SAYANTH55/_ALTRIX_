@@ -1,20 +1,28 @@
 ﻿import sys
 import os
 import re
+import asyncio
+from dotenv import load_dotenv
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
 sys.path.append(current_dir)
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
+# Load environment variables from root .env.local
+load_dotenv(os.path.join(parent_dir, ".env.local"))
+
+from fastapi import FastAPI, UploadFile, File, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from document_reader import process_document
 from services.ai_gateway import gateway
 from services.karion_service import KarionService
+from services.lexora_service import LexoraService
 import uvicorn
 
 app = FastAPI(title="ALTRIX â€” Research Intelligence Backend")
 karion = KarionService(gateway)
+lexora = LexoraService(gateway)
 
 # Import marker injector (replaces old BERT humanizer)
 try:
@@ -118,7 +126,9 @@ async def extract_text(file: UploadFile = File(...)):
 
     try:
         content = await file.read()
-        text, method = process_document(file.filename, content)
+        doc_data = process_document(file.filename, content)
+        text = doc_data["text"]
+        method = doc_data["method"]
 
         # Normalise whitespace
         text = text.replace("-\n", "").replace("\xa0", " ")
@@ -147,6 +157,54 @@ async def extract_text(file: UploadFile = File(...)):
         with open("backend_errors.log", "a") as f:
             f.write(f"\n--- Error ---\n{traceback.format_exc()}\n")
         raise HTTPException(status_code=500, detail=f"Processing Error: {str(e)}")
+
+
+# â”€â”€ LEXORA: Academic Formatting â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+@app.post("/lexora/process")
+async def lexora_process(
+    file: UploadFile = File(...),
+    format: str = Form("IEEE"),
+    autoDetect: str = Form("true"),
+    normalizeRefs: str = Form("true")
+):
+    """
+    LEXORA Pipeline:
+    1. Extract text from document.
+    2. Use AI to structure into LaTeX based on format.
+    """
+    try:
+        # Step 1: Extract Text & Images
+        content = await file.read()
+        
+        # Define image output directory in the public folder of the frontend
+        img_dir = os.path.join(parent_dir, "public", "extracted_lexora")
+        
+        doc_data = process_document(
+            file.filename, 
+            content, 
+            extract_images=True, 
+            output_image_dir=img_dir
+        )
+        
+        text = doc_data["text"]
+        
+        # Step 2: Format LaTeX
+        options = {
+            "autoDetect": autoDetect.lower() == "true",
+            "normalizeRefs": normalizeRefs.lower() == "true",
+            "images": doc_data["images"]
+        }
+        result = await lexora.process_text(text, format, options)
+        
+        # Add image info to result
+        result["extracted_images"] = doc_data["images"]
+        
+        return result
+    except Exception as e:
+        import traceback
+        with open("backend_errors.log", "a") as f:
+            f.write(f"\n--- LEXORA Error ---\n{traceback.format_exc()}\n")
+        raise HTTPException(status_code=500, detail=f"LEXORA Pipeline Error: {str(e)}")
 
 
 if __name__ == "__main__":

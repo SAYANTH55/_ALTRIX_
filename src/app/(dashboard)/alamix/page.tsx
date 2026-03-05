@@ -20,14 +20,6 @@ interface AcademicResult {
         journal: string;
     };
     abstract: string;
-    introduction?: string;
-    literatureReview?: string;
-    aim: string[];
-    objectives: string[];
-    problemStatement: string;
-    researchGap: string;
-    existingSystem: string;
-    proposedSystem: string;
     methodology: {
         dataset: string;
         algorithms: string;
@@ -35,10 +27,8 @@ interface AcademicResult {
         metrics: string;
     };
     results: string;
-    discussion?: string;
     conclusion: string;
-    futureWork: string[];
-    limitations: string;
+    researchGap: string;
     references?: string[];
 }
 
@@ -58,18 +48,10 @@ export default function AlamixPage() {
     const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
         overview: true,
         abstract: true,
-        intro: true,
-        litReview: true,
-        aim: true,
-        objectives: true,
-        problem: true,
-        gap: true,
-        proposed: true,
+        methodology: true,
         results: true,
-        discussion: true,
+        gap: true,
         conclusion: true,
-        future: true,
-        limitations: true,
         references: true
     });
 
@@ -158,9 +140,11 @@ export default function AlamixPage() {
                     const errorJson = JSON.parse(errorText);
                     errorDetails = errorJson.detail || errorJson.error;
                 } catch (e) {
-                    errorDetails = errorText.substring(0, 200); // Fallback to raw text (first 200 chars)
+                    errorDetails = errorText.substring(0, 200);
                 }
-                throw new Error(errorDetails || `Text extraction failed: ${extractResponse.statusText}.`);
+                setError(errorDetails || `Text extraction failed: ${extractResponse.statusText}.`);
+                setIsProcessing(false);
+                return;
             }
 
             const extractData = await extractResponse.json();
@@ -180,7 +164,9 @@ export default function AlamixPage() {
 
             if (!response.ok) {
                 const data = await response.json();
-                throw new Error(data.error || "Failed to analyze document.");
+                setError(data.error || "Failed to analyze document.");
+                setIsProcessing(false);
+                return;
             }
 
             setProcessingStep(3);
@@ -216,17 +202,15 @@ export default function AlamixPage() {
             const query = newUserMessage.content.toLowerCase();
 
             if (query.includes("methodology") || query.includes("how it works")) {
-                response = `Based on the paper, the proposed methodology involves ${result.proposedSystem}. It specifically uses ${result.methodology.algorithms} and was tested on the ${result.methodology.dataset}.`;
-            } else if (query.includes("aim") || query.includes("goal")) {
-                response = `The primary aims explicitly stated in the document are: ${result.aim.join(", ")}.`;
-            } else if (query.includes("future") || query.includes("scope")) {
-                response = `The author suggests several future directions, including: ${result.futureWork.join("; ")}.`;
+                response = `Based on the paper, the methodology uses ${result.methodology.algorithms} and was tested on the ${result.methodology.dataset}.`;
+            } else if (query.includes("result") || query.includes("finding")) {
+                response = `The key results found were: ${result.results}`;
             } else if (query.includes("who") || query.includes("author")) {
                 response = `The paper titled "${result.paperOverview.title}" was authored by ${result.paperOverview.authors}.`;
             } else if (query.includes("what is alamix")) {
                 response = "ALAMIX is a dedicated research paper intelligence system designed to extract high-fidelity academic insights with zero hallucination, serving as a thesis companion and publication analysis engine.";
             } else {
-                response = "As an academic assistant, I've analyzed the paper and found that your question pertains to specific domain knowledge. While the paper doesn't explicitly discuss this in depth, typical research in this field suggests focusing on structural integrity and stylistic variance. For queries strictly about this document, please refer to the Results or Conclusion sections.";
+                response = "As an academic assistant, I've analyzed the paper. Please refer to the methodology or results sections for documents-specific details.";
             }
 
             setChatMessages(prev => [...prev, { role: 'assistant', content: response }]);
@@ -302,27 +286,17 @@ export default function AlamixPage() {
 
         // Content
         addSection("1. Abstract", result.abstract);
-        addSection("2. Introduction", result.introduction || "Not available");
-        addSection("3. Literature Review", result.literatureReview || "Not available");
-        addSection("4. Aim of the Study", result.aim);
-        addSection("5. Specific Objectives", result.objectives);
-        addSection("6. Problem Statement", result.problemStatement);
-        addSection("7. Research Gap Analysis", result.researchGap);
-        addSection("8. Existing System", result.existingSystem || "Not mentioned in the document");
-        addSection("9. Proposed System / Methodology", result.proposedSystem);
-        addSection("10. Methodology Summary", [
+        addSection("2. Methodology Summary", [
             `Dataset: ${result.methodology.dataset}`,
             `Algorithms: ${result.methodology.algorithms}`,
             `Tools: ${result.methodology.tools}`,
             `Metrics: ${result.methodology.metrics}`
         ]);
-        addSection("11. Results & Findings", result.results);
-        addSection("12. Discussion", result.discussion || "Not available");
-        addSection("13. Conclusion", result.conclusion);
-        addSection("14. Future Scope", result.futureWork);
-        addSection("15. Limitations", result.limitations || "Not mentioned in the document");
+        addSection("3. Results & Findings", result.results);
+        addSection("4. Research Gap Analysis", result.researchGap);
+        addSection("5. Conclusion", result.conclusion);
         if (result.references && result.references.length > 0) {
-            addSection("16. References", result.references);
+            addSection("6. References", result.references);
         }
 
         doc.save(`${result.paperOverview.title.substring(0, 20)}_Analysis.pdf`);
@@ -589,77 +563,13 @@ export default function AlamixPage() {
                                 </AcademicCard>
 
                                 <AcademicCard
-                                    title="Introduction"
-                                    isOpen={expandedSections.intro}
-                                    onToggle={() => toggleSection('intro')}
+                                    title="Key Results & Findings"
+                                    isOpen={expandedSections.results}
+                                    onToggle={() => toggleSection('results')}
                                 >
                                     <p className="text-gray-300 leading-relaxed text-lg">
-                                        {result.introduction || "Introduction not extracted."}
+                                        {result.results}
                                     </p>
-                                </AcademicCard>
-
-                                <AcademicCard
-                                    title="Literature Review"
-                                    isOpen={expandedSections.litReview}
-                                    onToggle={() => toggleSection('litReview')}
-                                >
-                                    <p className="text-gray-300 leading-relaxed text-lg whitespace-pre-line">
-                                        {result.literatureReview || "Literature review not extracted."}
-                                    </p>
-                                </AcademicCard>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <AcademicCard
-                                        title="Aim of Study"
-                                        isOpen={expandedSections.aim}
-                                        onToggle={() => toggleSection('aim')}
-                                        onCopy={() => copyToClipboard('aim', result.aim.join("\n"))}
-                                        isCopied={copiedSection === 'aim'}
-                                    >
-                                        <ul className="space-y-4">
-                                            {result.aim.length > 0 ? (
-                                                result.aim.map((a, i) => (
-                                                    <li key={i} className="flex gap-4 items-start">
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-2 shrink-0 shadow-[0_0_10px_rgba(59,130,246,0.5)]"></span>
-                                                        <span className="text-gray-300 leading-snug">{a}</span>
-                                                    </li>
-                                                ))
-                                            ) : (
-                                                <li className="text-gray-500 italic">Aim not explicitly stated</li>
-                                            )}
-                                        </ul>
-                                    </AcademicCard>
-
-                                    <AcademicCard
-                                        title="Specific Objectives"
-                                        isOpen={expandedSections.objectives}
-                                        onToggle={() => toggleSection('objectives')}
-                                    >
-                                        <ul className="space-y-4">
-                                            {result.objectives.length > 0 ? (
-                                                result.objectives.map((obj, i) => (
-                                                    <li key={i} className="flex gap-4 items-start pb-4 border-b border-white/5 last:border-0 last:pb-0">
-                                                        <span className="font-orbitron font-bold text-blue-500 text-xs mt-0.5">0{i + 1}</span>
-                                                        <span className="text-gray-300 leading-snug">{obj}</span>
-                                                    </li>
-                                                ))
-                                            ) : (
-                                                <li className="text-gray-500 italic">Objectives not explicitly listed</li>
-                                            )}
-                                        </ul>
-                                    </AcademicCard>
-                                </div>
-
-                                <AcademicCard
-                                    title="Problem Statement"
-                                    isOpen={expandedSections.problem}
-                                    onToggle={() => toggleSection('problem')}
-                                >
-                                    <div className="p-6 bg-blue-500/5 rounded-2xl border border-blue-500/10">
-                                        <p className="text-blue-100/80 leading-relaxed text-lg">
-                                            {result.problemStatement || "Problem statement not explicitly defined"}
-                                        </p>
-                                    </div>
                                 </AcademicCard>
 
                                 <AcademicCard
@@ -672,50 +582,18 @@ export default function AlamixPage() {
                                             <AlertCircle size={24} className="text-indigo-400" />
                                         </div>
                                         <p className="text-indigo-200/90 leading-relaxed text-lg font-medium">
-                                            {result.researchGap || "Research gap not explicitly mentioned"}
+                                            {result.researchGap}
                                         </p>
                                     </div>
                                 </AcademicCard>
 
                                 <AcademicCard
-                                    title="Proposed System Architecture"
-                                    isOpen={expandedSections.proposed}
-                                    onToggle={() => toggleSection('proposed')}
+                                    title="Final Conclusion"
+                                    isOpen={expandedSections.conclusion}
+                                    onToggle={() => toggleSection('conclusion')}
                                 >
-                                    <p className="text-gray-300 leading-relaxed text-lg">
-                                        {result.proposedSystem || "Proposed system not discussed"}
-                                    </p>
-                                </AcademicCard>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <AcademicCard
-                                        title="Key Results & Findings"
-                                        isOpen={expandedSections.results}
-                                        onToggle={() => toggleSection('results')}
-                                    >
-                                        <p className="text-gray-300 leading-relaxed">
-                                            {result.results || "Results section not found"}
-                                        </p>
-                                    </AcademicCard>
-
-                                    <AcademicCard
-                                        title="Final Conclusion"
-                                        isOpen={expandedSections.conclusion}
-                                        onToggle={() => toggleSection('conclusion')}
-                                    >
-                                        <p className="text-gray-300 leading-relaxed italic border-l-2 border-blue-500/30 pl-6">
-                                            {result.conclusion || "Conclusion not found"}
-                                        </p>
-                                    </AcademicCard>
-                                </div>
-
-                                <AcademicCard
-                                    title="Discussion"
-                                    isOpen={expandedSections.discussion}
-                                    onToggle={() => toggleSection('discussion')}
-                                >
-                                    <p className="text-gray-300 leading-relaxed text-lg">
-                                        {result.discussion || "Discussion not extracted."}
+                                    <p className="text-gray-300 leading-relaxed italic border-l-2 border-blue-500/30 pl-6 text-lg">
+                                        {result.conclusion}
                                     </p>
                                 </AcademicCard>
 
@@ -731,44 +609,6 @@ export default function AlamixPage() {
                                                     {ref}
                                                 </p>
                                             ))}
-                                        </div>
-                                    </AcademicCard>
-                                )}
-
-                                {result.futureWork && result.futureWork.length > 0 && (
-                                    <AcademicCard
-                                        title="Expanded Future Scope"
-                                        isOpen={expandedSections.future}
-                                        onToggle={() => toggleSection('future')}
-                                    >
-                                        <div className="space-y-4">
-                                            {result.futureWork.map((work, i) => (
-                                                <div key={i} className="flex gap-4 items-start p-4 bg-blue-500/5 rounded-xl border border-blue-500/10">
-                                                    <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0 border border-blue-500/20">
-                                                        <Sparkles size={14} className="text-blue-400" />
-                                                    </div>
-                                                    <p className="text-blue-100/70 leading-relaxed font-medium tracking-tight">
-                                                        {work}
-                                                    </p>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </AcademicCard>
-                                )}
-
-                                {result.limitations && (
-                                    <AcademicCard
-                                        title="Identified Limitations"
-                                        isOpen={expandedSections.limitations}
-                                        onToggle={() => toggleSection('limitations')}
-                                    >
-                                        <div className="flex gap-6 items-start">
-                                            <div className="shrink-0 p-3 bg-red-500/10 rounded-2xl border border-red-500/20">
-                                                <AlertCircle size={24} className="text-red-400" />
-                                            </div>
-                                            <p className="text-gray-300 leading-relaxed text-lg">
-                                                {result.limitations}
-                                            </p>
                                         </div>
                                     </AcademicCard>
                                 )}
@@ -831,26 +671,16 @@ export default function AlamixPage() {
                                     </header>
 
                                     <DocSection title="1. Abstract" content={result.abstract} />
-                                    <DocSection title="2. Introduction" content={result.introduction || "N/A"} />
-                                    <DocSection title="3. Literature Review" content={result.literatureReview || "N/A"} />
-                                    <DocSection title="4. Aim of the Study" content={result.aim} isList />
-                                    <DocSection title="5. Specific Objectives" content={result.objectives} isList numbered />
-                                    <DocSection title="6. Problem Statement" content={result.problemStatement} />
-                                    <DocSection title="7. Research Gap" content={result.researchGap} />
-                                    <DocSection title="8. Existing System" content={result.existingSystem || "Existing system not discussed in the document."} />
-                                    <DocSection title="9. Proposed System / Methodology" content={result.proposedSystem} />
-                                    <DocSection title="10. Methodology Details" content={[
+                                    <DocSection title="2. Methodology Details" content={[
                                         `Dataset: ${result.methodology.dataset}`,
                                         `Algorithms: ${result.methodology.algorithms}`,
                                         `Tools: ${result.methodology.tools}`,
                                         `Evaluation Metrics: ${result.methodology.metrics}`
                                     ]} isList />
-                                    <DocSection title="11. Results & Findings" content={result.results} />
-                                    <DocSection title="12. Discussion" content={result.discussion || "N/A"} />
-                                    <DocSection title="13. Conclusion" content={result.conclusion} />
-                                    <DocSection title="14. Future Scope & Enhancements" content={result.futureWork} isList />
-                                    <DocSection title="15. Limitations" content={result.limitations || "Limitations section not found in document."} />
-                                    {result.references && <DocSection title="16. References" content={result.references} isList />}
+                                    <DocSection title="3. Results & Findings" content={result.results} />
+                                    <DocSection title="4. Research Gap" content={result.researchGap} />
+                                    <DocSection title="5. Conclusion" content={result.conclusion} />
+                                    {result.references && result.references.length > 0 && <DocSection title="6. References" content={result.references} isList />}
 
                                     <footer className="mt-20 pt-8 border-t border-gray-100 text-center text-xs text-gray-400">
                                         <p>© {new Date().getFullYear()} ALAMIX Research Intelligence Engine. Generated with academic integrity.</p>

@@ -48,10 +48,12 @@ export default function PaperCard({ paper, index = 0 }: PaperCardProps) {
                     <div className="flex items-center gap-2 shrink-0">
                         {/* Source badge */}
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border tracking-widest uppercase ${paper.source === "semantic"
-                                ? "border-purple-500/40 text-purple-300 bg-purple-500/10"
-                                : "border-emerald-500/40 text-emerald-300 bg-emerald-500/10"
+                            ? "border-purple-500/40 text-purple-300 bg-purple-500/10"
+                            : paper.source === "arxiv"
+                                ? "border-emerald-500/40 text-emerald-300 bg-emerald-500/10"
+                                : "border-blue-500/40 text-blue-300 bg-blue-500/10"
                             }`}>
-                            {paper.source === "semantic" ? "Semantic" : "arXiv"}
+                            {paper.source === "semantic" ? "Semantic" : paper.source === "arxiv" ? "arXiv" : "CrossRef"}
                         </span>
                         {paper.openAccess && (
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-green-500/30 text-green-400 bg-green-500/5 tracking-widest uppercase">

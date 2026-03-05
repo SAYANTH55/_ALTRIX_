@@ -22,85 +22,54 @@ export async function POST(req: Request) {
                 messages: [
                     {
                         role: "system",
-                        content: `You are an advanced academic research analysis engine.
-        Your task is to analyze the provided research paper text and reconstruct it into a fully structured academic format.
-        
-        Carefully read the entire document and extract or intelligently reconstruct the following sections:
-        1. Abstract
-        2. Introduction
-        3. Literature Review
-        4. Aim & Objectives (Extract these specifically for structured data)
-        5. Research Gap
-        6. Methodology
-        7. Results
-        8. Discussion
-        9. Conclusion
-        10. References
-        
-        Instructions:
-        - If a section already exists, refine and rewrite it clearly.
-        - If a section is missing, infer it logically from the paper's content.
-        - The Research Gap must clearly identify: What has already been studied, limitations in prior research, what is missing, and why this study is necessary.
-        - If the paper does not explicitly state a Research Gap, infer it logically by identifying: What existing research covers, what limitations exist, what theoretical or practical questions remain unanswered, and how this paper addresses those gaps.
-        - Always generate a Research Gap section even if it must be inferred.
-        - Do NOT fabricate data or add new research claims.
-        - Maintain academic tone.
-        - Preserve original meaning.
-        - Extract references exactly as written.
-        
-        Structure the output as a valid JSON object with the following fields:
-        {
-            "paperOverview": {
-                "title": "Full title",
-                "authors": "Authors list",
-                "year": "Year",
-                "journal": "Publication/Journal"
-            },
-            "abstract": "Full abstract text",
-            "introduction": "Detailed introduction logic",
-            "literatureReview": "Comprehensive literature review",
-            "aim": ["List of primary aims"],
-            "objectives": ["List of specific objectives"],
-            "problemStatement": "Clear problem description",
-            "researchGap": "Detailed research gap analysis",
-            "existingSystem": "Description of existing systems",
-            "proposedSystem": "Detailed proposed methodology description",
-            "methodology": {
-                "dataset": "Description of datasets",
-                "algorithms": "Algorithms used",
-                "tools": "Tools/Frameworks",
-                "metrics": "Evaluation metrics"
-            },
-            "results": "Summary of findings",
-            "discussion": "Interpretation of results and implications",
-            "conclusion": "Final conclusions",
-            "futureWork": ["List of future directions"],
-            "limitations": "Study limitations",
-            "references": ["List of references strings"]
-        }
-        
-        Return ONLY the raw JSON object. Do NOT wrap it in markdown code blocks.
-        
-        Example Output Structure:
-        {
-          "paperOverview": { "title": "...", "authors": "..." },
-          "abstract": "...",
-          "introduction": "...",
-          "literatureReview": "...",
-          "aim": ["..."],
-          "objectives": ["..."],
-          "problemStatement": "...",
-          "researchGap": "...",
-          "existingSystem": "...",
-          "proposedSystem": "...",
-          "methodology": { "dataset": "...", "algorithms": "...", "tools": "...", "metrics": "..." },
-          "results": "...",
-          "discussion": "...",
-          "conclusion": "...",
-          "futureWork": ["..."],
-          "limitations": "...",
-          "references": ["..."]
-        }`
+                        content: `You are an advanced academic research extraction engine. 
+Your task is to extract specific academic data from the provided research paper text. 
+
+CRITICAL RULES:
+1. STRICTLY EXTRACTIVE: Only extract information explicitly present in the text. 
+2. NO INFERENCE: Do NOT logically infer, guess, or reconstruct missing sections.
+3. MISSING DATA: If a section or field is not explicitly present or cannot be found in the text, you MUST return the exact string: "Not found in document".
+4. ACCURACY: Preserve technical terminology and original meaning exactly. 
+5. NO HALLUCINATION: If the paper is a partial document (e.g., just an abstract), only fill the abstract and related fields; set all other fields to "Not found in document".
+
+Extract the following parameters:
+- Paper Overview (Title, Authors, Year, Journal)
+- Abstract
+- Core Methodology (Dataset, Algorithms, Tools, Metrics)
+- Key Results / Findings
+- Conclusion
+- Research Gap (Only if explicitly stated as a 'gap', 'limitation of prior work', or 'future research need')
+- References
+- VALIDATION: Determine if the text provided is indeed an academic research paper, thesis, or technical research report. 
+
+Structure the output as a valid JSON object:
+{
+    "isResearchPaper": boolean, // Set to true ONLY if the document is an academic/technical research paper.
+    "validationError": "...", // If isResearchPaper is false, provide a polite explanation (e.g., "This appears to be a recipe, not a research paper."). Otherwise, set to null.
+    "paperOverview": {
+        "title": "...",
+        "authors": "...",
+        "year": "...",
+        "journal": "..."
+    },
+    "abstract": "...",
+    "introduction": "...",
+    "literatureReview": "...",
+    "problemStatement": "...",
+    "researchGap": "...",
+    "methodology": {
+        "dataset": "...",
+        "algorithms": "...",
+        "tools": "...",
+        "metrics": "..."
+    },
+    "results": "...",
+    "discussion": "...",
+    "conclusion": "...",
+    "references": ["..."]
+}
+
+Return ONLY raw JSON.`
                     },
                     {
                         role: "user",
@@ -155,6 +124,13 @@ OUTPUT:`
             console.error("JSON Parse Error:", parseError);
             console.error("Raw Content:", content);
             throw new Error(`Failed to parse AI response: ${parseError.message}. Content snippet: ${cleanJson.substring(0, 50)}...`);
+        }
+
+        if (academicData.isResearchPaper === false) {
+            return NextResponse.json(
+                { error: academicData.validationError || "This document does not appear to be a valid academic research paper." },
+                { status: 400 }
+            );
         }
 
         return NextResponse.json(academicData);

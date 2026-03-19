@@ -8,3 +8,7 @@ Pillow
 torch
 transformers
 python-dotenv
+PyMuPDF
+httpx
+citeproc-py
+pydantic

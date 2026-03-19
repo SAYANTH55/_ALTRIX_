@@ -65,7 +65,12 @@ export default function LexoraPage() {
             formData.append("autoDetect", options.autoDetect.toString());
             formData.append("normalizeRefs", options.normalizeRefs.toString());
 
+<<<<<<< HEAD
             const res = await fetch("/api/python/lexora/process", {
+=======
+            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+            const res = await fetch(`${backendUrl}/lexora/process`, {
+>>>>>>> 811f4d9 (fix: replace hardcoded localhost urls with environment variables for production deployment)
                 method: "POST",
                 body: formData,
             });

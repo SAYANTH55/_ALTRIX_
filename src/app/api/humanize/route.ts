@@ -485,7 +485,8 @@ export async function POST(req: Request) {
         try {
             const bertCtrl = new AbortController();
             const bertTimer = setTimeout(() => bertCtrl.abort(), 6000);
-            const bertRes = await fetch("http://127.0.0.1:8000/inject-markers", {
+            const backendUrl = process.env.BACKEND_URL || "http://127.0.0.1:8000";
+            const bertRes = await fetch(`${backendUrl}/inject-markers`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ text: finalText, injection_rate: injectionRate }),

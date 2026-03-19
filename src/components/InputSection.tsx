@@ -47,7 +47,8 @@ export default function InputSection({ input, setInput, onProcess, isProcessing 
         formData.append('file', file);
 
         try {
-            const response = await fetch('http://localhost:8000/extract-text', {
+            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+            const response = await fetch(`${backendUrl}/extract-text`, {
                 method: 'POST',
                 body: formData,
             });

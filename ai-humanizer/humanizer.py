@@ -15,22 +15,9 @@ Signal 8 — Punctuation:        Rich punctuation injector (—, (), ;, ?, ...)
 
 import re
 import random
-import torch
-from transformers import BertTokenizer, BertModel
-
-# ── Load BERT (encoder only — no MLM head needed) ────────────────────────────
-try:
-    _tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    _model = BertModel.from_pretrained("bert-base-uncased")
-    _model.eval()
-    print("SENTIC Stage 2: BERT encoder loaded ✓")
-    BERT_AVAILABLE = True
-except Exception as e:
-    print(f"BERT load warning: {e} — rule-only mode active.")
-    BERT_AVAILABLE = False
-
 
 # ══════════════════════════════════════════════════════════════════════════════
+
 # SIGNAL DATA POOLS
 # ══════════════════════════════════════════════════════════════════════════════
 

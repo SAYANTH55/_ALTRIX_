@@ -5,10 +5,9 @@ python-docx
 pdfplumber
 pytesseract
 Pillow
-torch
-transformers
 python-dotenv
 PyMuPDF
+
 httpx
 citeproc-py
 pydantic

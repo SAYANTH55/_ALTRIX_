@@ -62,16 +62,16 @@ function entropyParams(formality: string): {
 // Forces model away from "safe" token choices → semantic drift toward Tier 2/3 words
 // Token IDs for Llama-3 tokenizer (common AI connective tokens)
 const AI_LOGIT_BIAS: Record<string, number> = {
-    "15636": -0.8,  // "Furthermore"
-    "24671": -0.8,  // "Moreover"
-    "50650": -0.8,  // "Additionally"
-    "11263": -0.6,  // "However"
-    "11292": -0.6,  // "Therefore"
-    "11123": -0.5,  // "crucial"
-    "51728": -0.5,  // "significant"
-    "22252": -0.5,  // "important"
-    "39935": -0.7,  // "comprehensive"
-    "28592": -0.7,  // "multifaceted"
+    "15636": -80,  // "Furthermore"
+    "24671": -80,  // "Moreover"
+    "50650": -80,  // "Additionally"
+    "11263": -60,  // "However"
+    "11292": -60,  // "Therefore"
+    "11123": -50,  // "crucial"
+    "51728": -50,  // "significant"
+    "22252": -50,  // "important"
+    "39935": -70,  // "comprehensive"
+    "28592": -70,  // "multifaceted"
 };
 
 // ─── Sentence-boundary chunker ───────────────────────────────────────────────
@@ -180,7 +180,6 @@ async function aiChat(
                         frequency_penalty,
                         presence_penalty,
                         max_tokens: 2048,
-                        logit_bias: AI_LOGIT_BIAS,
                     }),
                 });
                 if (res.ok) {
@@ -201,7 +200,7 @@ async function aiChat(
     if (geminiKey) {
         try {
             const res = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${geminiKey}`,
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiKey}`,
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },

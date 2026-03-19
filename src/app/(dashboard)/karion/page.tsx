@@ -14,6 +14,54 @@ type OutputFormat = "Formatted Text" | "BibTeX" | "LaTeX \\bibitem" | "RIS";
 type VerificationMode = "Strict" | "Standard" | "Quick";
 type Tab = "Formatted" | "BibTeX" | "Metadata";
 
+// --- Indigo Glass Select (custom dropdown matching SENTIC's GlassSelect pattern) ---
+interface IndigoSelectProps<T extends string> {
+    label: string; value: T; onChange: (v: T) => void;
+    options: { value: T; label: string }[];
+    icon?: React.ReactNode;
+}
+function IndigoSelect<T extends string>({ label, value, onChange, options, icon }: IndigoSelectProps<T>) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+        document.addEventListener("mousedown", h);
+        return () => document.removeEventListener("mousedown", h);
+    }, []);
+    const current = options.find(o => o.value === value)?.label ?? value;
+    return (
+        <div ref={ref} className="relative flex-1 min-w-0">
+            <p className="text-[9px] font-bold tracking-[0.3em] uppercase text-[#4B3EFF]/60 mb-1.5 pl-1 flex items-center gap-1.5">
+                {icon}{label}
+            </p>
+            <button onClick={() => setOpen(p => !p)}
+                className="w-full flex items-center justify-between gap-2 px-4 py-3 rounded-2xl bg-white/[0.04] border border-white/10 hover:border-[#4B3EFF]/40 hover:bg-white/[0.07] backdrop-blur-md transition-all duration-200">
+                <span className="text-sm text-white/80 font-medium">{current}</span>
+                <motion.span animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }} className="text-[#4B3EFF]/60">
+                    <ChevronDown size={14} />
+                </motion.span>
+            </button>
+            <AnimatePresence>
+                {open && (
+                    <motion.div initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={{ duration: 0.15 }}
+                        className="absolute top-full mt-2 left-0 right-0 z-50 rounded-2xl bg-[#07041a]/95 border border-[#4B3EFF]/25 backdrop-blur-xl shadow-2xl shadow-black/60 overflow-hidden">
+                        {options.map(opt => (
+                            <button key={opt.value} onClick={() => { onChange(opt.value); setOpen(false); }}
+                                className={`w-full text-left px-4 py-3 text-sm transition-all duration-150 ${opt.value === value
+                                    ? "text-[#8b82ff] bg-[#4B3EFF]/15 font-semibold"
+                                    : "text-gray-300 hover:bg-white/[0.06] hover:text-white"
+                                    }`}>
+                                {opt.label}
+                            </button>
+                        ))}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}
+
 interface CitationMetadata {
     authors: string[];
     title: string;
@@ -174,56 +222,42 @@ export default function KarionPage() {
                             />
 
                             <div className="px-8 py-6 border-t border-[#4B3EFF]/10 bg-[#4B3EFF]/5 grid grid-cols-1 md:grid-cols-3 gap-6">
-                                {/* Style Selection */}
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-bold tracking-widest text-white/30 uppercase flex items-center gap-2">
-                                        <BookOpen size={10} /> Target Style
-                                    </label>
-                                    <select
-                                        value={style}
-                                        onChange={(e) => setStyle(e.target.value as CitationStyle)}
-                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white/80 focus:outline-none focus:border-[#4B3EFF]/40 transition-colors cursor-pointer"
-                                    >
-                                        <option value="IEEE">IEEE</option>
-                                        <option value="APA">APA</option>
-                                        <option value="ACM">ACM</option>
-                                        <option value="Chicago">Chicago</option>
-                                        <option value="Vancouver">Vancouver</option>
-                                    </select>
-                                </div>
-
-                                {/* Output Format */}
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-bold tracking-widest text-white/30 uppercase flex items-center gap-2">
-                                        <FileText size={10} /> Output Format
-                                    </label>
-                                    <select
-                                        value={format}
-                                        onChange={(e) => setFormat(e.target.value as OutputFormat)}
-                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white/80 focus:outline-none focus:border-[#4B3EFF]/40 transition-colors cursor-pointer"
-                                    >
-                                        <option value="Formatted Text">Formatted Text</option>
-                                        <option value="BibTeX">BibTeX</option>
-                                        <option value="LaTeX \\bibitem">LaTeX \bibitem</option>
-                                        <option value="RIS">RIS</option>
-                                    </select>
-                                </div>
-
-                                {/* Verification Mode */}
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-bold tracking-widest text-white/30 uppercase flex items-center gap-2">
-                                        <Database size={10} /> Verification
-                                    </label>
-                                    <select
-                                        value={mode}
-                                        onChange={(e) => setMode(e.target.value as VerificationMode)}
-                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white/80 focus:outline-none focus:border-[#4B3EFF]/40 transition-colors cursor-pointer"
-                                    >
-                                        <option value="Quick">Quick (AI only)</option>
-                                        <option value="Standard">Standard (Crossref)</option>
-                                        <option value="Strict">Strict (+Semantic Scholar)</option>
-                                    </select>
-                                </div>
+                                <IndigoSelect<CitationStyle>
+                                    label="Target Style"
+                                    value={style}
+                                    onChange={setStyle}
+                                    icon={<BookOpen size={9} />}
+                                    options={[
+                                        { value: "IEEE", label: "IEEE" },
+                                        { value: "APA", label: "APA" },
+                                        { value: "ACM", label: "ACM" },
+                                        { value: "Chicago", label: "Chicago" },
+                                        { value: "Vancouver", label: "Vancouver" },
+                                    ]}
+                                />
+                                <IndigoSelect<OutputFormat>
+                                    label="Output Format"
+                                    value={format}
+                                    onChange={setFormat}
+                                    icon={<FileText size={9} />}
+                                    options={[
+                                        { value: "Formatted Text", label: "Formatted Text" },
+                                        { value: "BibTeX", label: "BibTeX" },
+                                        { value: "LaTeX \\bibitem", label: "LaTeX \\bibitem" },
+                                        { value: "RIS", label: "RIS" },
+                                    ]}
+                                />
+                                <IndigoSelect<VerificationMode>
+                                    label="Verification"
+                                    value={mode}
+                                    onChange={setMode}
+                                    icon={<Database size={9} />}
+                                    options={[
+                                        { value: "Quick", label: "Quick (AI only)" },
+                                        { value: "Standard", label: "Standard (Crossref)" },
+                                        { value: "Strict", label: "Strict (+Semantic Scholar)" },
+                                    ]}
+                                />
                             </div>
                         </div>
                     </div>

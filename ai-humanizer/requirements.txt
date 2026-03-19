@@ -7,3 +7,4 @@ pytesseract
 Pillow
 torch
 transformers
+python-dotenv
